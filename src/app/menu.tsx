@@ -119,7 +119,9 @@ export default function MenuScreen() {
               icon="chatbox-outline"
               iconColor={Palette.purple}
               label={c.title}
-              onPress={() => router.replace('/chat')}
+              onPress={() =>
+                router.navigate({ pathname: '/(tabs)', params: { conversationId: c.id } })
+              }
             />
           ))
         )}

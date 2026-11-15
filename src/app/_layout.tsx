@@ -38,7 +38,6 @@ function RootNavigator() {
       <Stack.Screen name="index" options={{ animation: 'none' }} />
       <Stack.Screen name="(auth)" options={{ animation: 'fade' }} />
       <Stack.Screen name="(tabs)" options={{ animation: 'fade' }} />
-      <Stack.Screen name="chat" options={{ animation: 'slide_from_bottom' }} />
       <Stack.Screen
         name="menu"
         options={{ presentation: 'transparentModal', animation: 'slide_from_left' }}

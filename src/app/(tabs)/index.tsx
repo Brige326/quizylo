@@ -43,12 +43,16 @@ export default function AccueilScreen() {
   const { profile, session, exitGuest } = useAuth();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { reset } = useLocalSearchParams<{ reset?: string }>();
+  const { reset, conversationId: convParam } = useLocalSearchParams<{
+    reset?: string;
+    conversationId?: string;
+  }>();
   const userId = session?.user?.id;
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
+  const [focused, setFocused] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
 
   const inputRef = useRef<ComponentRef<typeof TextInput>>(null);
@@ -58,6 +62,7 @@ export default function AccueilScreen() {
   const hasChat = messages.length > 0;
   const hasText = input.trim().length > 0;
 
+  // « Nouveau chat » : conversation vierge
   useEffect(() => {
     if (reset) {
       setMessages([]);
@@ -66,6 +71,29 @@ export default function AccueilScreen() {
       chatOpacity.setValue(0);
     }
   }, [reset, chatOpacity]);
+
+  // Ouvrir une discussion existante depuis le menu : on charge ses messages
+  useEffect(() => {
+    if (!convParam || !userId) return;
+    let active = true;
+    (async () => {
+      const { data } = await supabase
+        .from('messages')
+        .select('id, role, content')
+        .eq('conversation_id', convParam)
+        .order('created_at', { ascending: true });
+      if (!active || !data) return;
+      setConversationId(convParam);
+      setMessages(
+        data
+          .filter((m) => m.role === 'user' || m.role === 'assistant')
+          .map((m) => ({ id: m.id, role: m.role as 'user' | 'assistant', content: m.content })),
+      );
+    })();
+    return () => {
+      active = false;
+    };
+  }, [convParam, userId]);
 
   useEffect(() => {
     if (hasChat) {
@@ -196,7 +224,7 @@ export default function AccueilScreen() {
             </View>
           ) : null}
 
-          {!hasChat ? (
+          {!hasChat && !focused ? (
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
@@ -228,6 +256,8 @@ export default function AccueilScreen() {
                 placeholderTextColor={Palette.textMuted}
                 value={input}
                 onChangeText={setInput}
+                onFocus={() => setFocused(true)}
+                onBlur={() => setFocused(false)}
                 onSubmitEditing={send}
                 returnKeyType="send"
                 multiline
