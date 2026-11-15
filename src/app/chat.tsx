@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -28,11 +28,13 @@ export default function ChatScreen() {
   const insets = useSafeAreaInsets();
   const userId = session?.user?.id;
 
+  const { q } = useLocalSearchParams<{ q?: string }>();
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
   const listRef = useRef<FlatList<ChatMessage>>(null);
+  const initialSent = useRef(false);
 
   // Crée une conversation à l'ouverture (si pas déjà en cours).
   useEffect(() => {
@@ -54,10 +56,10 @@ export default function ChatScreen() {
   const scrollToEnd = () =>
     requestAnimationFrame(() => listRef.current?.scrollToEnd({ animated: true }));
 
-  const send = async () => {
-    const text = input.trim();
+  const send = async (override?: string) => {
+    const text = (override ?? input).trim();
     if (!text || sending || !userId || !conversationId) return;
-    setInput('');
+    if (override === undefined) setInput('');
 
     const userMsg: ChatMessage = { id: `u-${Date.now()}`, role: 'user', content: text };
     setMessages((m) => [...m, userMsg]);
@@ -96,6 +98,15 @@ export default function ChatScreen() {
       setSending(false);
     }
   };
+
+  // Message initial transmis depuis l'accueil : envoyé dès que la conversation existe.
+  useEffect(() => {
+    if (conversationId && q && !initialSent.current) {
+      initialSent.current = true;
+      void send(q);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [conversationId, q]);
 
   return (
     <View style={styles.root}>
@@ -178,10 +189,10 @@ export default function ChatScreen() {
             value={input}
             onChangeText={setInput}
             multiline
-            onSubmitEditing={send}
+            onSubmitEditing={() => send()}
           />
           <Tappable
-            onPress={send}
+            onPress={() => send()}
             disabled={!input.trim() || sending}
             style={[styles.sendBtn, (!input.trim() || sending) && styles.sendBtnOff]}
             scaleTo={0.9}

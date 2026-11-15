@@ -54,7 +54,7 @@ export function TabBar({ state, navigateToTab }: TabBarProps) {
           return (
             <Pressable key={route.key} style={styles.item} onPress={onPress} hitSlop={8}>
               <View style={[styles.centerButton, focused && styles.centerButtonActive]}>
-                {config.icon(focused ? Palette.onPrimary : Palette.text, 24)}
+                {config.icon(focused ? Palette.onPrimary : Palette.text, 28)}
               </View>
             </Pressable>
           );
@@ -62,7 +62,7 @@ export function TabBar({ state, navigateToTab }: TabBarProps) {
 
         return (
           <Pressable key={route.key} style={styles.item} onPress={onPress} hitSlop={8}>
-            {config.icon(color, 24)}
+            {config.icon(color, 28)}
             {focused ? <View style={styles.dot} /> : <View style={styles.dotPlaceholder} />}
           </Pressable>
         );
@@ -74,24 +74,24 @@ export function TabBar({ state, navigateToTab }: TabBarProps) {
 const styles = StyleSheet.create({
   bar: {
     flexDirection: 'row',
-    backgroundColor: Palette.background,
+    backgroundColor: Palette.surface,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: Palette.border,
-    paddingTop: Spacing.sm,
+    paddingTop: Spacing.md,
   },
-  item: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 4 },
-  dot: { width: 5, height: 5, borderRadius: 3, backgroundColor: Palette.primary },
-  dotPlaceholder: { width: 5, height: 5 },
+  item: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 6, minHeight: 44 },
+  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: Palette.primary },
+  dotPlaceholder: { width: 6, height: 6 },
   centerButton: {
-    width: 54,
-    height: 54,
-    borderRadius: 27,
+    width: 62,
+    height: 62,
+    borderRadius: 31,
     backgroundColor: Palette.surfaceElevated,
     borderWidth: 1,
     borderColor: Palette.border,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: -6,
+    marginTop: -10,
   },
   centerButtonActive: { backgroundColor: Palette.primary, borderColor: Palette.primary },
 });

@@ -67,7 +67,8 @@ export default function MenuScreen() {
   };
 
   return (
-    <View style={[styles.root, { paddingTop: insets.top + Spacing.sm }]}>
+    <View style={styles.wrap}>
+      <View style={[styles.panel, { paddingTop: insets.top + Spacing.sm }]}>
       {/* Profil */}
       <View style={styles.profileRow}>
         <View style={styles.avatar}>
@@ -84,7 +85,7 @@ export default function MenuScreen() {
         </Tappable>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
+      <ScrollView style={styles.flex} showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
         {showWidget ? (
           <View style={styles.widgetCard}>
             <View style={styles.widgetPreview}>
@@ -136,8 +137,8 @@ export default function MenuScreen() {
         </Tappable>
       </View>
 
-      {/* Zone cliquable pour fermer (bord droit) */}
-      <Pressable style={styles.closeEdge} onPress={close} accessibilityLabel="Fermer le menu" />
+      </View>
+      <Pressable style={styles.overlay} onPress={close} accessibilityLabel="Fermer le menu" />
     </View>
   );
 
@@ -177,7 +178,17 @@ function MenuRow({
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: Palette.background, paddingHorizontal: Spacing.lg },
+  flex: { flex: 1 },
+  wrap: { flex: 1, flexDirection: 'row' },
+  panel: {
+    width: '86%',
+    maxWidth: 420,
+    backgroundColor: Palette.background,
+    paddingHorizontal: Spacing.lg,
+    borderRightWidth: StyleSheet.hairlineWidth,
+    borderRightColor: Palette.border,
+  },
+  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)' },
   profileRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, paddingBottom: Spacing.lg },
   avatar: {
     width: 48,
@@ -219,5 +230,4 @@ const styles = StyleSheet.create({
     borderRadius: Radius.pill,
     paddingVertical: Spacing.lg,
   },
-  closeEdge: { position: 'absolute', top: 0, bottom: 0, right: -40, width: 40 },
 });

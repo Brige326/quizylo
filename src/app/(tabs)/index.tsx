@@ -1,13 +1,21 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { useState } from 'react';
+import {
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  TextInput,
+  View,
+} from 'react-native';
 
 import { Mascot } from '@/components/ui/Mascot';
 import { Tappable } from '@/components/ui/Tappable';
 import { Text } from '@/components/ui/Text';
 import { Screen } from '@/components/ui/Screen';
 import { TopBar } from '@/components/TopBar';
-import { Palette, Radius, Spacing } from '@/constants/theme';
+import { Palette, Radius, Spacing, Type } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth';
 import { comingSoon } from '@/lib/ui';
 
@@ -28,17 +36,24 @@ const ACTIONS: Action[] = [
 export default function AccueilScreen() {
   const { profile } = useAuth();
   const router = useRouter();
+  const [draft, setDraft] = useState('');
+
+  const openChat = (initial?: string) => {
+    const q = (initial ?? draft).trim();
+    setDraft('');
+    router.push(q ? { pathname: '/chat', params: { q } } : '/chat');
+  };
 
   return (
     <Screen>
       <TopBar xp={profile?.xp ?? 0} streak={profile?.streak_days ?? 0} />
 
-      {/* Zone centrale : hero */}
-      <View style={styles.center}>
-        <View style={styles.heroWrap}>
-          <View style={styles.mascotWrap}>
-            <Mascot size={78} />
-          </View>
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        {/* Accueil = discussion IA : zone de bienvenue centrée */}
+        <View style={styles.welcome}>
+          <Mascot size={80} />
           <View style={styles.heroCard}>
             <Text variant="title" center style={styles.heroTitle}>
               Entraîne-toi avec de vrais examens blancs.
@@ -50,52 +65,66 @@ export default function AccueilScreen() {
             </Text>
           </Tappable>
         </View>
-      </View>
 
-      {/* Actions rapides */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.chips}>
-        {ACTIONS.map((a) => (
-          <Tappable key={a.key} style={styles.chip} onPress={() => comingSoon(a.label)}>
-            <Ionicons name={a.icon} size={16} color={a.color} />
-            <Text variant="small">{a.label}</Text>
+        {/* Onglets d'actions — juste au-dessus de la barre d'écriture */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.chips}>
+          {ACTIONS.map((a) => (
+            <Tappable key={a.key} style={styles.chip} onPress={() => comingSoon(a.label)}>
+              <Ionicons name={a.icon} size={16} color={a.color} />
+              <Text variant="small">{a.label}</Text>
+            </Tappable>
+          ))}
+        </ScrollView>
+
+        {/* Barre d'écriture — visible et prominente */}
+        <View style={styles.inputRow}>
+          <Tappable
+            style={styles.plus}
+            onPress={() => comingSoon('Pièce jointe')}
+            scaleTo={0.9}
+            accessibilityLabel="Ajouter">
+            <Ionicons name="add" size={24} color={Palette.text} />
           </Tappable>
-        ))}
-      </ScrollView>
-
-      {/* Barre de chat */}
-      <View style={styles.chatRow}>
-        <Tappable
-          style={styles.plus}
-          onPress={() => comingSoon('Pièce jointe')}
-          accessibilityLabel="Ajouter"
-          scaleTo={0.9}>
-          <Ionicons name="add" size={24} color={Palette.text} />
-        </Tappable>
-        <Tappable style={styles.chatBar} onPress={() => router.push('/chat')} haptic={false}>
-          <Text variant="body" color={Palette.textMuted} style={styles.chatPlaceholder}>
-            Demande à Quizylo…
-          </Text>
-          <Ionicons name="camera-outline" size={20} color={Palette.textSecondary} />
-          <Ionicons name="mic-outline" size={20} color={Palette.textSecondary} />
-        </Tappable>
-      </View>
+          <View style={styles.inputField}>
+            <TextInput
+              style={styles.input}
+              placeholder="Demande à Quizylo…"
+              placeholderTextColor={Palette.textMuted}
+              value={draft}
+              onChangeText={setDraft}
+              onSubmitEditing={() => openChat()}
+              returnKeyType="send"
+            />
+            {draft.trim() ? (
+              <Tappable onPress={() => openChat()} scaleTo={0.9} accessibilityLabel="Envoyer">
+                <View style={styles.sendBtn}>
+                  <Ionicons name="arrow-up" size={18} color={Palette.background} />
+                </View>
+              </Tappable>
+            ) : (
+              <Tappable onPress={() => comingSoon('Appareil photo')} scaleTo={0.9}>
+                <Ionicons name="camera-outline" size={22} color={Palette.textSecondary} />
+              </Tappable>
+            )}
+          </View>
+        </View>
+      </KeyboardAvoidingView>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  center: { flex: 1, justifyContent: 'center', paddingHorizontal: Spacing.lg },
-  heroWrap: { alignItems: 'center' },
-  mascotWrap: { zIndex: 2, marginBottom: -Spacing.lg },
+  flex: { flex: 1 },
+  welcome: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: Spacing.lg, gap: Spacing.lg },
   heroCard: {
     backgroundColor: Palette.surfaceElevated,
     borderRadius: Radius.xl,
-    paddingTop: Spacing.xxl,
-    paddingBottom: Spacing.xl,
+    paddingVertical: Spacing.xl,
     paddingHorizontal: Spacing.xl,
+    marginTop: -Spacing.md,
     alignSelf: 'stretch',
   },
   heroTitle: { fontSize: 24, lineHeight: 30 },
@@ -104,7 +133,6 @@ const styles = StyleSheet.create({
     borderRadius: Radius.pill,
     paddingHorizontal: Spacing.xl,
     paddingVertical: Spacing.md,
-    marginTop: Spacing.lg,
   },
   chips: { paddingHorizontal: Spacing.lg, gap: Spacing.sm, paddingBottom: Spacing.md },
   chip: {
@@ -118,33 +146,41 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.md,
     paddingVertical: 10,
   },
-  chatRow: {
+  inputRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.sm,
     paddingHorizontal: Spacing.lg,
-    paddingBottom: Spacing.sm,
+    paddingBottom: Spacing.md,
   },
   plus: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 46,
+    height: 46,
+    borderRadius: 23,
     borderWidth: 1,
     borderColor: Palette.border,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  chatBar: {
+  inputField: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.md,
+    gap: Spacing.sm,
+    height: 50,
     paddingHorizontal: Spacing.lg,
-    height: 48,
     backgroundColor: Palette.surface,
     borderWidth: 1,
     borderColor: Palette.border,
     borderRadius: Radius.pill,
   },
-  chatPlaceholder: { flex: 1 },
+  input: { flex: 1, color: Palette.text, ...Type.body },
+  sendBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: Palette.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 });
