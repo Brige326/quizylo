@@ -6,6 +6,7 @@ import {
   Animated,
   FlatList,
   Keyboard,
+  LayoutAnimation,
   Platform,
   Pressable,
   ScrollView,
@@ -62,34 +63,33 @@ export default function AccueilScreen() {
   const inputRef = useRef<ComponentRef<typeof TextInput>>(null);
   const listRef = useRef<FlatList<ChatMessage>>(null);
   const chatOpacity = useRef(new Animated.Value(0)).current;
-  const kbPad = useRef(new Animated.Value(0)).current;
+  const [kbPad, setKbPad] = useState(0);
   const heroOpacity = useRef(new Animated.Value(1)).current;
   const chipsOpacity = useRef(new Animated.Value(1)).current;
 
-  // On remonte la barre de (hauteur clavier − hauteur réelle de la TabBar),
-  // avec la MÊME durée que le clavier, pour un mouvement « rattaché » sans saut.
-  // La TabBar reste en place (le clavier la recouvre) : rien n'apparaît/disparaît brusquement.
+  // Remontée de la barre = hauteur clavier − hauteur réelle de la TabBar.
+  // On anime avec LayoutAnimation.Types.keyboard : la SEULE courbe RN qui épouse
+  // exactement la courbe native du clavier iOS → mouvement parfaitement solidaire, sans saut.
   useEffect(() => {
     if (Platform.OS !== 'ios') return;
+    const animateWith = (duration: number) =>
+      LayoutAnimation.configureNext({
+        duration: duration || 250,
+        update: { type: LayoutAnimation.Types.keyboard },
+      });
     const show = Keyboard.addListener('keyboardWillShow', (e) => {
-      Animated.timing(kbPad, {
-        toValue: Math.max(0, e.endCoordinates.height - getTabBarHeight()),
-        duration: e.duration || 250,
-        useNativeDriver: false,
-      }).start();
+      animateWith(e.duration);
+      setKbPad(Math.max(0, e.endCoordinates.height - getTabBarHeight()));
     });
     const hide = Keyboard.addListener('keyboardWillHide', (e) => {
-      Animated.timing(kbPad, {
-        toValue: 0,
-        duration: e.duration || 250,
-        useNativeDriver: false,
-      }).start();
+      animateWith(e.duration);
+      setKbPad(0);
     });
     return () => {
       show.remove();
       hide.remove();
     };
-  }, [kbPad]);
+  }, []);
 
   const hasChat = messages.length > 0;
   const hasText = input.trim().length > 0;
@@ -232,7 +232,7 @@ export default function AccueilScreen() {
     <Screen>
       <TopBar xp={profile?.xp ?? 0} streak={profile?.streak_days ?? 0} />
 
-      <Animated.View style={[styles.kav, { paddingBottom: kbPad }]}>
+      <View style={[styles.kav, { paddingBottom: kbPad }]}>
         {hasChat ? (
           <Animated.View style={[styles.flex, { opacity: chatOpacity }]}>
             <FlatList
@@ -335,7 +335,7 @@ export default function AccueilScreen() {
             )}
           </View>
         </View>
-      </Animated.View>
+      </View>
     </Screen>
   );
 }
