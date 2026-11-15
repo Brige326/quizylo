@@ -91,7 +91,11 @@ export default function SettingsScreen() {
         </Section>
 
         <Section title="IA & discussions">
-          <Row icon="sparkles-outline" label="Mémoire de l'IA" onPress={() => soon("Mémoire de l'IA")} />
+          <Row
+            icon="sparkles-outline"
+            label="Mémoire de l'IA"
+            onPress={() => router.push('/ai-memory')}
+          />
           <Row
             icon="trash-outline"
             label="Supprimer toutes les discussions"
