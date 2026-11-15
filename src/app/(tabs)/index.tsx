@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { Alert, ScrollView, StyleSheet, View } from 'react-native';
 
 import { Mascot } from '@/components/ui/Mascot';
@@ -26,6 +27,7 @@ const ACTIONS: Action[] = [
 
 export default function AccueilScreen() {
   const { profile, signOut } = useAuth();
+  const router = useRouter();
 
   const onMenu = () => {
     Alert.alert('Quizylo', profile?.full_name || 'Mon compte', [
@@ -84,7 +86,7 @@ export default function AccueilScreen() {
           scaleTo={0.9}>
           <Ionicons name="add" size={24} color={Palette.text} />
         </Tappable>
-        <Tappable style={styles.chatBar} onPress={() => comingSoon('Chat IA')} haptic={false}>
+        <Tappable style={styles.chatBar} onPress={() => router.push('/chat')} haptic={false}>
           <Text variant="body" color={Palette.textMuted} style={styles.chatPlaceholder}>
             Demande à Quizylo…
           </Text>
