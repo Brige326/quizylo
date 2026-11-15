@@ -1,9 +1,20 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import {
+  Alert,
+  Animated,
+  Easing,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 import Swipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 import { Mascot } from '@/components/ui/Mascot';
 import { Tappable } from '@/components/ui/Tappable';
@@ -25,6 +36,33 @@ export default function MenuScreen() {
   const { session, profile, isGuest, signOut, exitGuest } = useAuth();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { width: screenW } = useWindowDimensions();
+  // Largeur façon Claude/ChatGPT : un panneau net, pas toute la page.
+  const panelW = Math.min(screenW * 0.8, 340);
+
+  // Ouverture pro : le panneau glisse depuis la gauche, le fond s'assombrit en fondu.
+  const anim = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.timing(anim, {
+      toValue: 1,
+      duration: 240,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+  }, [anim]);
+
+  // Ferme en rejouant l'animation à l'envers, puis exécute l'action (retour, nouvelle discussion…).
+  const dismissThen = (action: () => void) => {
+    Animated.timing(anim, {
+      toValue: 0,
+      duration: 180,
+      easing: Easing.in(Easing.cubic),
+      useNativeDriver: true,
+    }).start(() => action());
+  };
+
+  const translateX = anim.interpolate({ inputRange: [0, 1], outputRange: [-panelW, 0] });
+  const backdropOpacity = anim.interpolate({ inputRange: [0, 1], outputRange: [0, 0.55] });
 
   const [showWidget, setShowWidget] = useState(true);
   const [conversations, setConversations] = useState<Conversation[]>(
@@ -63,11 +101,8 @@ export default function MenuScreen() {
     };
   }, [userId]);
 
-  // Fermeture sûre du menu : on ne déclenche un retour que s'il y a bien un écran derrière
-  // (évite l'erreur « GO_BACK was not handled by any navigator »).
-  const close = () => {
-    if (router.canGoBack()) router.back();
-  };
+  // Fermeture sûre du menu : animation inverse puis retour (seulement s'il y a un écran derrière).
+  const close = () => dismissThen(() => router.canGoBack() && router.back());
 
   const onAccount = () => {
     if (isGuest) {
@@ -82,15 +117,15 @@ export default function MenuScreen() {
   };
 
   const onNewChat = () => {
-    // Accueil vierge : navigate ferme le menu ET atterrit sur l'onglet Accueil.
+    // Accueil vierge ; on signale, on referme en douceur, puis on atterrit sur l'Accueil.
     startNewChat();
-    router.navigate('/(tabs)');
+    dismissThen(() => router.navigate('/(tabs)'));
   };
 
   const onOpenConversation = (id: string) => {
-    // Rouvre la discussion à l'identique ; navigate ferme le menu et atterrit sur l'Accueil.
+    // Rouvre la discussion à l'identique ; on signale, on referme, puis on atterrit sur l'Accueil.
     openConversation(id);
-    router.navigate('/(tabs)');
+    dismissThen(() => router.navigate('/(tabs)'));
   };
 
   const onDeleteConversation = (id: string, title: string) => {
@@ -114,8 +149,17 @@ export default function MenuScreen() {
   };
 
   return (
-    <View style={styles.wrap}>
-      <View style={[styles.panel, { paddingTop: insets.top + Spacing.sm }]}>
+    <View style={styles.root}>
+      <AnimatedPressable
+        style={[styles.overlay, { opacity: backdropOpacity }]}
+        onPress={close}
+        accessibilityLabel="Fermer le menu"
+      />
+      <Animated.View
+        style={[
+          styles.panel,
+          { width: panelW, paddingTop: insets.top + Spacing.sm, transform: [{ translateX }] },
+        ]}>
       {/* Profil */}
       <View style={styles.profileRow}>
         <View style={styles.avatar}>
@@ -189,8 +233,7 @@ export default function MenuScreen() {
         </Tappable>
       </View>
 
-      </View>
-      <Pressable style={styles.overlay} onPress={close} accessibilityLabel="Fermer le menu" />
+      </Animated.View>
     </View>
   );
 
@@ -297,16 +340,18 @@ const styles = StyleSheet.create({
   skelRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, paddingVertical: Spacing.md },
   skelDot: { width: 22, height: 22, borderRadius: 11, backgroundColor: Palette.surface },
   skelBar: { flex: 1, height: 14, borderRadius: 7, backgroundColor: Palette.surface, maxWidth: '70%' },
-  wrap: { flex: 1, flexDirection: 'row' },
+  root: { flex: 1 },
+  overlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: '#000' },
   panel: {
-    width: '86%',
-    maxWidth: 420,
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: 0,
     backgroundColor: Palette.background,
     paddingHorizontal: Spacing.lg,
     borderRightWidth: StyleSheet.hairlineWidth,
     borderRightColor: Palette.border,
   },
-  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)' },
   profileRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, paddingBottom: Spacing.lg },
   avatar: {
     width: 48,

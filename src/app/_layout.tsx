@@ -44,7 +44,7 @@ function RootNavigator() {
       <Stack.Screen name="(tabs)" options={{ animation: 'fade' }} />
       <Stack.Screen
         name="menu"
-        options={{ presentation: 'transparentModal', animation: 'slide_from_left' }}
+        options={{ presentation: 'transparentModal', animation: 'none' }}
       />
       <Stack.Screen name="pro" options={{ animation: 'slide_from_bottom', presentation: 'modal' }} />
     </Stack>
