@@ -77,12 +77,16 @@ export default function SettingsScreen() {
         </View>
 
         <Section title="Compte">
-          <Row icon="person-outline" label="Mes informations" onPress={() => soon('Mes informations')} />
+          <Row
+            icon="person-outline"
+            label="Mes informations"
+            onPress={() => router.push('/account')}
+          />
           <Row
             icon="star-outline"
             label="Abonnement"
-            value="Gratuit"
-            onPress={() => router.push('/pro')}
+            value={profile?.is_pro ? 'PRO' : 'Gratuit'}
+            onPress={() => router.push('/abonnement')}
           />
         </Section>
 
