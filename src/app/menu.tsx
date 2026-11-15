@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import Swipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Mascot } from '@/components/ui/Mascot';
@@ -210,29 +211,46 @@ function ConversationRow({
   onOpen: () => void;
   onDelete: () => void;
 }) {
+  // Glisser vers la gauche révèle « Supprimer » (comme Mail / ChatGPT).
+  const renderRightActions = () => (
+    <Pressable style={styles.swipeDelete} onPress={onDelete}>
+      <Ionicons name="trash-outline" size={20} color="#fff" />
+      <Text variant="caption" color="#fff" style={{ marginTop: 2 }}>
+        Supprimer
+      </Text>
+    </Pressable>
+  );
   return (
-    <View style={styles.convRow}>
-      <Tappable style={styles.convOpen} onPress={onOpen} haptic={false}>
-        <Ionicons name="chatbox-outline" size={22} color={Palette.purple} />
-        <Text variant="bodyStrong" style={{ flex: 1 }} numberOfLines={1}>
-          {label}
-        </Text>
-      </Tappable>
-      <Tappable
-        onPress={onDelete}
-        hitSlop={10}
-        scaleTo={0.85}
-        accessibilityLabel="Supprimer la discussion">
-        <Ionicons name="trash-outline" size={19} color={Palette.textMuted} />
-      </Tappable>
-    </View>
+    <Swipeable renderRightActions={renderRightActions} overshootRight={false} friction={2}>
+      <View style={styles.convRow}>
+        <Tappable style={styles.convOpen} onPress={onOpen} haptic={false}>
+          <Ionicons name="chatbox-outline" size={22} color={Palette.purple} />
+          <Text variant="bodyStrong" style={{ flex: 1 }} numberOfLines={1}>
+            {label}
+          </Text>
+        </Tappable>
+      </View>
+    </Swipeable>
   );
 }
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  convRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, paddingVertical: Spacing.md },
+  convRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: Spacing.md,
+    backgroundColor: Palette.background,
+  },
   convOpen: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
+  swipeDelete: {
+    width: 88,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Palette.danger,
+    borderRadius: Radius.md,
+    marginVertical: 4,
+  },
   wrap: { flex: 1, flexDirection: 'row' },
   panel: {
     width: '86%',

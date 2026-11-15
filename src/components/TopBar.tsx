@@ -69,11 +69,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: Palette.purpleSurface,
-    borderRadius: Radius.pill,
-    paddingLeft: 14,
-    paddingRight: 6,
     paddingVertical: 6,
+    paddingLeft: 4,
   },
   obtenir: {
     color: Palette.purple,
