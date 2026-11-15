@@ -193,7 +193,8 @@ export default function AccueilScreen() {
 
     const convId = await ensureConversation(text);
     if (convId) {
-      void supabase
+      // IMPORTANT : await — une requête Supabase ne part QUE si on l'attend (sinon rien n'est enregistré).
+      await supabase
         .from('messages')
         .insert({ conversation_id: convId, user_id: userId, role: 'user', content: text });
     }
@@ -212,16 +213,13 @@ export default function AccueilScreen() {
       setMessages((m) => [...m, bot]);
       scrollToEnd();
       if (convId) {
-        void supabase.from('messages').insert({
+        // await obligatoire : la réponse de l'IA est enregistrée ; le déclencheur met à jour updated_at.
+        await supabase.from('messages').insert({
           conversation_id: convId,
           user_id: userId,
           role: 'assistant',
           content: reply,
         });
-        void supabase
-          .from('conversations')
-          .update({ updated_at: new Date().toISOString() })
-          .eq('id', convId);
       }
     } finally {
       setSending(false);
