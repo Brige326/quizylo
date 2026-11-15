@@ -59,6 +59,9 @@ export default function AccueilScreen() {
 
   const inputRef = useRef<ComponentRef<typeof TextInput>>(null);
   const listRef = useRef<FlatList<ChatMessage>>(null);
+  // Vrai si l'utilisateur est déjà en bas de la conversation : on ne recale en bas que dans ce cas,
+  // pour ne jamais interrompre la lecture d'anciens messages (fin du « balayage » au scroll).
+  const atBottomRef = useRef(true);
   const chatOpacity = useRef(new Animated.Value(0)).current;
   const heroOpacity = useRef(new Animated.Value(1)).current;
   const chipsOpacity = useRef(new Animated.Value(1)).current;
@@ -97,6 +100,7 @@ export default function AccueilScreen() {
 
   // Nouveau chat : on revient à l'accueil vierge, exactement comme au tout début.
   const resetChat = useCallback(() => {
+    atBottomRef.current = true;
     setMessages([]);
     setConversationId(null);
     setInput('');
@@ -108,6 +112,7 @@ export default function AccueilScreen() {
   const loadConversation = useCallback(
     async (id: string) => {
       if (!userId) return;
+      atBottomRef.current = true;
       setInput('');
       setFocused(false);
       const { data } = await supabase
@@ -239,9 +244,17 @@ export default function AccueilScreen() {
               keyExtractor={(m) => m.id}
               contentContainerStyle={styles.listContent}
               renderItem={({ item }) => <Bubble message={item} />}
-              onContentSizeChange={scrollToEnd}
+              onScroll={(e) => {
+                const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent;
+                atBottomRef.current =
+                  contentSize.height - layoutMeasurement.height - contentOffset.y < 80;
+              }}
+              scrollEventThrottle={16}
+              onContentSizeChange={() => {
+                if (atBottomRef.current) scrollToEnd();
+              }}
               keyboardShouldPersistTaps="handled"
-              keyboardDismissMode="interactive"
+              keyboardDismissMode="on-drag"
               showsVerticalScrollIndicator={false}
             />
           </Animated.View>
