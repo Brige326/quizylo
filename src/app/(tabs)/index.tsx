@@ -25,9 +25,17 @@ import { comingSoon } from '@/lib/ui';
 import { supabase } from '@/lib/supabase';
 
 type ChatMessage = { id: string; role: 'user' | 'assistant'; content: string };
-type Action = { key: string; label: string; icon: keyof typeof Ionicons.glyphMap; color: string };
+type Chip = { key: string; label: string; icon: keyof typeof Ionicons.glyphMap; color: string };
 
-const ACTIONS: Action[] = [
+const SUBJECTS: Chip[] = [
+  { key: 'info', label: 'Informatique', icon: 'code-slash', color: Palette.primary },
+  { key: 'math', label: 'Mathématiques', icon: 'calculator', color: Palette.primary },
+  { key: 'med', label: 'Médecine', icon: 'medkit', color: Palette.primary },
+  { key: 'phys', label: 'Physique', icon: 'planet', color: Palette.primary },
+  { key: 'bio', label: 'Biologie', icon: 'leaf', color: Palette.primary },
+];
+
+const ACTIONS: Chip[] = [
   { key: 'resoudre', label: 'Résoudre', icon: 'camera', color: Palette.info },
   { key: 'quiz', label: 'Quiz', icon: 'help-circle', color: '#FF4D8D' },
   { key: 'examen', label: 'Examen blanc', icon: 'document-text', color: '#5B8CFF' },
@@ -35,6 +43,8 @@ const ACTIONS: Action[] = [
   { key: 'redaction', label: 'Rédaction', icon: 'create', color: Palette.purple },
   { key: 'rechercher', label: 'Rechercher', icon: 'search', color: '#2DD4BF' },
   { key: 'aide', label: 'Aide-mémoire', icon: 'albums', color: Palette.streak },
+  { key: 'prepa', label: 'Préparer un exam', icon: 'clipboard', color: '#5B8CFF' },
+  { key: 'tableau', label: 'Tableau', icon: 'grid', color: '#2DD4BF' },
   { key: 'vocab', label: 'Vocabulaire', icon: 'language', color: '#F5B301' },
   { key: 'image', label: 'Créer une image', icon: 'image', color: '#A855F7' },
 ];
@@ -52,7 +62,6 @@ export default function AccueilScreen() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
-  const [focused, setFocused] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
 
   const inputRef = useRef<ComponentRef<typeof TextInput>>(null);
@@ -62,7 +71,6 @@ export default function AccueilScreen() {
   const hasChat = messages.length > 0;
   const hasText = input.trim().length > 0;
 
-  // « Nouveau chat » : conversation vierge
   useEffect(() => {
     if (reset) {
       setMessages([]);
@@ -72,7 +80,6 @@ export default function AccueilScreen() {
     }
   }, [reset, chatOpacity]);
 
-  // Ouvrir une discussion existante depuis le menu : on charge ses messages
   useEffect(() => {
     if (!convParam || !userId) return;
     let active = true;
@@ -182,24 +189,6 @@ export default function AccueilScreen() {
         style={styles.kav}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={insets.bottom + 56}>
-        {/* Accueil : mascotte + phrase au centre EXACT de toute la page (absolu) */}
-        {!hasChat ? (
-          <View style={styles.welcomeAbs} pointerEvents="box-none">
-            <Mascot size={82} />
-            <View style={styles.heroCard}>
-              <Text variant="title" center style={styles.heroTitle}>
-                Entraîne-toi avec de vrais examens blancs.
-              </Text>
-            </View>
-            <Tappable style={styles.cta} onPress={() => comingSoon('Créer un examen blanc')}>
-              <Text variant="bodyStrong" color={Palette.background}>
-                Créer un examen blanc
-              </Text>
-            </Tappable>
-          </View>
-        ) : null}
-
-        {/* Conversation */}
         {hasChat ? (
           <Animated.View style={[styles.flex, { opacity: chatOpacity }]}>
             <FlatList
@@ -212,79 +201,101 @@ export default function AccueilScreen() {
               showsVerticalScrollIndicator={false}
             />
           </Animated.View>
-        ) : null}
-
-        {/* Bloc bas : onglets + barre, poussé tout en bas */}
-        <View style={styles.bottomBlock}>
-          {sending ? (
-            <View style={styles.typing}>
-              <Text variant="small" color={Palette.textSecondary}>
-                Quizylo réfléchit…
+        ) : (
+          <ScrollView
+            style={styles.flex}
+            contentContainerStyle={styles.welcome}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}>
+            <Mascot size={76} />
+            <View style={styles.heroCard}>
+              <Text variant="title" center style={styles.heroTitle}>
+                Quel est le sujet de ton prochain exam ?
               </Text>
             </View>
-          ) : null}
-
-          {!hasChat && !focused ? (
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              style={styles.chipsScroll}
-              contentContainerStyle={styles.chips}>
-              {ACTIONS.map((a) => (
-                <Tappable key={a.key} style={styles.chip} onPress={() => comingSoon(a.label)}>
-                  <Ionicons name={a.icon} size={16} color={a.color} />
-                  <Text variant="small">{a.label}</Text>
+            <View style={styles.subjects}>
+              {SUBJECTS.map((s) => (
+                <Tappable key={s.key} style={styles.subjectChip} onPress={() => comingSoon(s.label)}>
+                  <Ionicons name={s.icon} size={16} color={s.color} />
+                  <Text variant="small" style={{ fontWeight: '700' }}>
+                    {s.label}
+                  </Text>
                 </Tappable>
               ))}
-            </ScrollView>
-          ) : null}
-
-          <View style={styles.inputRow}>
-            <Tappable
-              style={styles.plus}
-              onPress={() => comingSoon('Pièce jointe')}
-              scaleTo={0.9}
-              accessibilityLabel="Ajouter">
-              <Ionicons name="add" size={24} color={Palette.text} />
-            </Tappable>
-
-            <View style={styles.inputField}>
-              <TextInput
-                ref={inputRef}
-                style={styles.input}
-                placeholder="Demande à Quizylo…"
-                placeholderTextColor={Palette.textMuted}
-                value={input}
-                onChangeText={setInput}
-                onFocus={() => setFocused(true)}
-                onBlur={() => setFocused(false)}
-                onSubmitEditing={send}
-                returnKeyType="send"
-                multiline
-              />
-              {hasText ? (
-                <Tappable onPress={send} scaleTo={0.9} accessibilityLabel="Envoyer">
-                  <View style={styles.sendBtn}>
-                    <Ionicons name="arrow-up" size={18} color={Palette.background} />
-                  </View>
-                </Tappable>
-              ) : (
-                <View style={styles.rightIcons}>
-                  <Tappable
-                    onPress={() => inputRef.current?.focus()}
-                    scaleTo={0.9}
-                    accessibilityLabel="Dicter">
-                    <Ionicons name="mic-outline" size={22} color={Palette.textSecondary} />
-                  </Tappable>
-                  <Tappable
-                    onPress={() => comingSoon('Appareil photo')}
-                    scaleTo={0.9}
-                    accessibilityLabel="Photo">
-                    <Ionicons name="camera-outline" size={22} color={Palette.textSecondary} />
-                  </Tappable>
-                </View>
-              )}
             </View>
+            <Tappable style={styles.seeAll} onPress={() => comingSoon('Tous les sujets')}>
+              <Text variant="bodyStrong">Voir tous les sujets</Text>
+              <Ionicons name="arrow-forward" size={16} color={Palette.text} />
+            </Tappable>
+          </ScrollView>
+        )}
+
+        {sending ? (
+          <View style={styles.typing}>
+            <Text variant="small" color={Palette.textSecondary}>
+              Quizylo réfléchit…
+            </Text>
+          </View>
+        ) : null}
+
+        {/* Onglets d'actions — toujours visibles, juste au-dessus de la barre */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.chipsScroll}
+          contentContainerStyle={styles.chips}>
+          {ACTIONS.map((a) => (
+            <Tappable key={a.key} style={styles.chip} onPress={() => comingSoon(a.label)}>
+              <Ionicons name={a.icon} size={16} color={a.color} />
+              <Text variant="small">{a.label}</Text>
+            </Tappable>
+          ))}
+        </ScrollView>
+
+        {/* Barre d'écriture */}
+        <View style={[styles.inputRow, { paddingBottom: Spacing.md }]}>
+          <Tappable
+            style={styles.plus}
+            onPress={() => comingSoon('Pièce jointe')}
+            scaleTo={0.9}
+            accessibilityLabel="Ajouter">
+            <Ionicons name="add" size={24} color={Palette.text} />
+          </Tappable>
+
+          <View style={styles.inputField}>
+            <TextInput
+              ref={inputRef}
+              style={styles.input}
+              placeholder="Demande à Quizylo…"
+              placeholderTextColor={Palette.textMuted}
+              value={input}
+              onChangeText={setInput}
+              onSubmitEditing={send}
+              returnKeyType="send"
+              multiline
+            />
+            {hasText ? (
+              <Tappable onPress={send} scaleTo={0.9} accessibilityLabel="Envoyer">
+                <View style={styles.sendBtn}>
+                  <Ionicons name="arrow-up" size={18} color="#fff" />
+                </View>
+              </Tappable>
+            ) : (
+              <View style={styles.rightIcons}>
+                <Tappable
+                  onPress={() => comingSoon('Appareil photo')}
+                  scaleTo={0.9}
+                  accessibilityLabel="Photo">
+                  <Ionicons name="camera-outline" size={22} color={Palette.textSecondary} />
+                </Tappable>
+                <Tappable
+                  onPress={() => inputRef.current?.focus()}
+                  scaleTo={0.9}
+                  accessibilityLabel="Dicter">
+                  <Ionicons name="mic-outline" size={22} color={Palette.textSecondary} />
+                </Tappable>
+              </View>
+            )}
           </View>
         </View>
       </KeyboardAvoidingView>
@@ -293,19 +304,32 @@ export default function AccueilScreen() {
 }
 
 function Bubble({ message }: { message: ChatMessage }) {
-  const isUser = message.role === 'user';
-  return (
-    <View style={[styles.bubbleRow, isUser ? styles.rowEnd : styles.rowStart]}>
-      {!isUser ? (
-        <View style={styles.botAvatar}>
-          <Mascot size={18} />
+  if (message.role === 'user') {
+    return (
+      <View style={styles.userRow}>
+        <View style={styles.userBubble}>
+          <Text style={[Type.body, { color: Palette.text }]}>{message.content}</Text>
         </View>
-      ) : null}
-      <View style={[styles.bubble, isUser ? styles.bubbleUser : styles.bubbleBot]}>
-        <Text style={[Type.body, { color: isUser ? Palette.background : Palette.text }]}>
-          {message.content}
-        </Text>
       </View>
+    );
+  }
+  return (
+    <View style={styles.botBlock}>
+      <View style={styles.botAvatar}>
+        <Mascot size={18} />
+      </View>
+      <Text style={[Type.body, { color: Palette.text, marginTop: Spacing.xs }]}>
+        {message.content}
+      </Text>
+      <View style={styles.reactions}>
+        <Ionicons name="copy-outline" size={16} color={Palette.textMuted} />
+        <Ionicons name="thumbs-up-outline" size={16} color={Palette.textMuted} />
+        <Ionicons name="thumbs-down-outline" size={16} color={Palette.textMuted} />
+        <Ionicons name="ellipsis-horizontal" size={16} color={Palette.textMuted} />
+      </View>
+      <Text variant="caption" color={Palette.textMuted}>
+        Quizylo génère des réponses grâce à l&apos;IA
+      </Text>
     </View>
   );
 }
@@ -313,50 +337,69 @@ function Bubble({ message }: { message: ChatMessage }) {
 const styles = StyleSheet.create({
   kav: { flex: 1 },
   flex: { flex: 1 },
-  welcomeAbs: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
+  welcome: {
+    flexGrow: 1,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: Spacing.lg,
-    gap: Spacing.lg,
+    paddingVertical: Spacing.xl,
+    gap: Spacing.md,
   },
   heroCard: {
     backgroundColor: Palette.surfaceElevated,
     borderRadius: Radius.xl,
-    paddingVertical: Spacing.xl,
+    paddingVertical: Spacing.lg,
     paddingHorizontal: Spacing.xl,
     marginTop: -Spacing.md,
-    alignSelf: 'stretch',
   },
-  heroTitle: { fontSize: 24, lineHeight: 30 },
-  cta: {
-    backgroundColor: '#F4F4F5',
+  heroTitle: { fontSize: 22, lineHeight: 28 },
+  subjects: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: Spacing.sm,
+    marginTop: Spacing.sm,
+  },
+  subjectChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: Palette.surface,
     borderRadius: Radius.pill,
-    paddingHorizontal: Spacing.xl,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 9,
+  },
+  seeAll: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    backgroundColor: Palette.surface,
+    borderRadius: Radius.pill,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
+    marginTop: Spacing.xs,
+  },
+  listContent: { paddingHorizontal: Spacing.lg, paddingTop: Spacing.lg, paddingBottom: Spacing.sm, gap: Spacing.lg },
+  userRow: { flexDirection: 'row', justifyContent: 'flex-end' },
+  userBubble: {
+    maxWidth: '82%',
+    backgroundColor: Palette.surfaceElevated,
+    borderRadius: Radius.lg,
+    borderBottomRightRadius: 6,
+    paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.md,
   },
-  listContent: { paddingHorizontal: Spacing.lg, paddingTop: Spacing.lg, paddingBottom: Spacing.sm, gap: Spacing.md },
-  bubbleRow: { flexDirection: 'row', alignItems: 'flex-end', gap: Spacing.sm },
-  rowEnd: { justifyContent: 'flex-end' },
-  rowStart: { justifyContent: 'flex-start' },
+  botBlock: { alignItems: 'flex-start', gap: 4 },
   botAvatar: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
     backgroundColor: Palette.purpleSurface,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
   },
-  bubble: { maxWidth: '80%', paddingHorizontal: Spacing.lg, paddingVertical: Spacing.md, borderRadius: Radius.lg },
-  bubbleUser: { backgroundColor: Palette.primary, borderBottomRightRadius: 6 },
-  bubbleBot: { backgroundColor: Palette.surfaceElevated, borderBottomLeftRadius: 6 },
-  // Poussé tout en bas, quelle que soit la zone au-dessus
-  bottomBlock: { marginTop: 'auto', paddingBottom: Spacing.md },
+  reactions: { flexDirection: 'row', gap: Spacing.lg, marginTop: Spacing.xs },
   typing: { paddingHorizontal: Spacing.lg, paddingBottom: Spacing.sm },
   chipsScroll: { flexGrow: 0, flexShrink: 0, height: 52, marginBottom: Spacing.sm },
   chips: { paddingHorizontal: Spacing.lg, gap: Spacing.sm, alignItems: 'center' },
@@ -400,7 +443,7 @@ const styles = StyleSheet.create({
     width: 34,
     height: 34,
     borderRadius: 17,
-    backgroundColor: Palette.primary,
+    backgroundColor: Palette.info,
     alignItems: 'center',
     justifyContent: 'center',
   },
