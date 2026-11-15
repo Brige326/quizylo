@@ -28,3 +28,16 @@ export function subscribeChatNav(listener: (a: ChatNavAction) => void) {
     listeners.delete(listener);
   };
 }
+
+// Cache mémoire des discussions : le menu l'affiche INSTANTANÉMENT à l'ouverture
+// (plus de clignotement « vos discussions s'afficheront ici »), puis rafraîchit en fond.
+export type ConversationLite = { id: string; title: string | null };
+let cachedConversations: ConversationLite[] = [];
+
+export function getCachedConversations(): ConversationLite[] {
+  return cachedConversations;
+}
+
+export function setCachedConversations(list: ConversationLite[]) {
+  cachedConversations = list;
+}

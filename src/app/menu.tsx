@@ -10,7 +10,13 @@ import { Tappable } from '@/components/ui/Tappable';
 import { Text } from '@/components/ui/Text';
 import { Palette, Radius, Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth';
-import { notifyConversationDeleted, openConversation, startNewChat } from '@/lib/chatNav';
+import {
+  getCachedConversations,
+  notifyConversationDeleted,
+  openConversation,
+  setCachedConversations,
+  startNewChat,
+} from '@/lib/chatNav';
 import { supabase } from '@/lib/supabase';
 
 type Conversation = { id: string; title: string };
@@ -21,7 +27,10 @@ export default function MenuScreen() {
   const insets = useSafeAreaInsets();
 
   const [showWidget, setShowWidget] = useState(true);
-  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [conversations, setConversations] = useState<Conversation[]>(
+    () => getCachedConversations() as Conversation[],
+  );
+  const [loading, setLoading] = useState(getCachedConversations().length === 0);
 
   const userId = session?.user?.id;
   const email = session?.user?.email ?? '';
@@ -31,22 +40,34 @@ export default function MenuScreen() {
     : '@' + (profile?.username || email.split('@')[0] || 'moi');
 
   useEffect(() => {
-    if (!userId) return;
+    if (!userId) {
+      setLoading(false);
+      return;
+    }
     let active = true;
     supabase
       .from('conversations')
       .select('id, title')
       .order('updated_at', { ascending: false })
-      .limit(15)
+      .limit(30)
       .then(({ data }) => {
-        if (active && data) setConversations(data as Conversation[]);
+        if (!active) return;
+        if (data) {
+          setConversations(data as Conversation[]);
+          setCachedConversations(data as Conversation[]);
+        }
+        setLoading(false);
       });
     return () => {
       active = false;
     };
   }, [userId]);
 
-  const close = () => router.back();
+  // Fermeture sûre du menu : on ne déclenche un retour que s'il y a bien un écran derrière
+  // (évite l'erreur « GO_BACK was not handled by any navigator »).
+  const close = () => {
+    if (router.canGoBack()) router.back();
+  };
 
   const onAccount = () => {
     if (isGuest) {
@@ -61,13 +82,13 @@ export default function MenuScreen() {
   };
 
   const onNewChat = () => {
-    // Accueil vierge, puis on atterrit sur l'onglet Accueil et on ferme le menu.
+    // Accueil vierge : navigate ferme le menu ET atterrit sur l'onglet Accueil.
     startNewChat();
     router.navigate('/(tabs)');
   };
 
   const onOpenConversation = (id: string) => {
-    // Rouvre la discussion à l'identique, atterrit sur l'Accueil et ferme le menu.
+    // Rouvre la discussion à l'identique ; navigate ferme le menu et atterrit sur l'Accueil.
     openConversation(id);
     router.navigate('/(tabs)');
   };
@@ -135,13 +156,7 @@ export default function MenuScreen() {
         <Text variant="heading" style={styles.sectionTitle}>
           Discussions précédentes
         </Text>
-        {conversations.length === 0 ? (
-          <Text variant="body" color={Palette.textMuted} style={{ paddingVertical: Spacing.sm }}>
-            {isGuest
-              ? 'Connecte-toi pour retrouver tes discussions.'
-              : 'Tes discussions apparaîtront ici.'}
-          </Text>
-        ) : (
+        {conversations.length > 0 ? (
           conversations.map((c) => (
             <ConversationRow
               key={c.id}
@@ -150,6 +165,18 @@ export default function MenuScreen() {
               onDelete={() => onDeleteConversation(c.id, c.title)}
             />
           ))
+        ) : loading ? (
+          <View>
+            <SkeletonRow />
+            <SkeletonRow />
+            <SkeletonRow />
+          </View>
+        ) : (
+          <Text variant="body" color={Palette.textMuted} style={{ paddingVertical: Spacing.sm }}>
+            {isGuest
+              ? 'Connecte-toi pour retrouver tes discussions.'
+              : 'Tes discussions apparaîtront ici.'}
+          </Text>
         )}
       </ScrollView>
 
@@ -202,6 +229,15 @@ function MenuRow({
   );
 }
 
+function SkeletonRow() {
+  return (
+    <View style={styles.skelRow}>
+      <View style={styles.skelDot} />
+      <View style={styles.skelBar} />
+    </View>
+  );
+}
+
 function ConversationRow({
   label,
   onOpen,
@@ -251,6 +287,9 @@ const styles = StyleSheet.create({
     borderRadius: Radius.md,
     marginVertical: 4,
   },
+  skelRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, paddingVertical: Spacing.md },
+  skelDot: { width: 22, height: 22, borderRadius: 11, backgroundColor: Palette.surface },
+  skelBar: { flex: 1, height: 14, borderRadius: 7, backgroundColor: Palette.surface, maxWidth: '70%' },
   wrap: { flex: 1, flexDirection: 'row' },
   panel: {
     width: '86%',
