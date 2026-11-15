@@ -3,7 +3,7 @@ import { StyleSheet, View } from 'react-native';
 
 import { Tappable } from '@/components/ui/Tappable';
 import { Text } from '@/components/ui/Text';
-import { Fonts, Palette, Radius, Spacing } from '@/constants/theme';
+import { Palette, Radius, Spacing } from '@/constants/theme';
 
 type TopBarProps = {
   xp?: number;
@@ -40,9 +40,11 @@ export function TopBar({ onMenu, onPro }: TopBarProps) {
         style={styles.pro}
         scaleTo={0.94}
         accessibilityLabel="Obtenir PRO">
-        <Text style={styles.obtenir}>Obtenir</Text>
-        <View style={styles.proBadge}>
-          <Text style={styles.proText}>PRO</Text>
+        <View style={styles.proInner}>
+          <Text style={styles.obtenir}>Obtenir</Text>
+          <View style={styles.proBadge}>
+            <Text style={styles.proText}>PRO</Text>
+          </View>
         </View>
       </Tappable>
     </View>
@@ -66,19 +68,19 @@ const styles = StyleSheet.create({
   },
   // Obtenir PRO
   pro: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
     paddingVertical: 6,
     paddingLeft: 4,
   },
+  proInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    transform: [{ skewX: '-9deg' }],
+  },
   obtenir: {
     color: Palette.purple,
-    fontSize: 16,
-    fontWeight: '700',
-    fontFamily: Fonts.rounded,
-    fontStyle: 'italic',
-    letterSpacing: 0.2,
+    fontSize: 17,
+    fontFamily: 'Fredoka_600SemiBold',
   },
   proBadge: {
     backgroundColor: Palette.purple,
@@ -89,8 +91,7 @@ const styles = StyleSheet.create({
   proText: {
     color: '#fff',
     fontSize: 15,
-    fontWeight: '800',
-    fontFamily: Fonts.rounded,
-    letterSpacing: 2,
+    fontFamily: 'Fredoka_600SemiBold',
+    letterSpacing: 1.5,
   },
 });

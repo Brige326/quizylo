@@ -1,3 +1,4 @@
+import { useFonts, Fredoka_600SemiBold } from '@expo-google-fonts/fredoka';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
@@ -14,14 +15,16 @@ SplashScreen.preventAutoHideAsync();
 
 function RootNavigator() {
   const { initializing } = useAuth();
+  const [fontsLoaded] = useFonts({ Fredoka_600SemiBold });
+  const ready = !initializing && fontsLoaded;
 
   useEffect(() => {
-    if (!initializing) SplashScreen.hideAsync();
-  }, [initializing]);
+    if (ready) SplashScreen.hideAsync();
+  }, [ready]);
 
-  // Pendant l'initialisation on affiche un vrai écran (fond + spinner),
+  // Pendant l'initialisation (auth + polices) on affiche un vrai écran (fond + spinner),
   // jamais un rendu vide qui apparaîtrait comme un écran noir.
-  if (initializing) {
+  if (!ready) {
     return (
       <View style={{ flex: 1, backgroundColor: Palette.background, alignItems: 'center', justifyContent: 'center' }}>
         <ActivityIndicator color={Palette.primary} size="large" />
