@@ -6,7 +6,6 @@ import {
   Animated,
   FlatList,
   Keyboard,
-  KeyboardAvoidingView,
   LayoutAnimation,
   Platform,
   Pressable,
@@ -79,6 +78,30 @@ export default function AccueilScreen() {
   const inputRef = useRef<ComponentRef<typeof TextInput>>(null);
   const listRef = useRef<FlatList<ChatMessage>>(null);
   const chatOpacity = useRef(new Animated.Value(0)).current;
+  const kbPad = useRef(new Animated.Value(0)).current;
+
+  // On remonte le contenu de la hauteur EXACTE du clavier (iOS) pour coller la barre au clavier.
+  useEffect(() => {
+    if (Platform.OS !== 'ios') return;
+    const show = Keyboard.addListener('keyboardWillShow', (e) => {
+      Animated.timing(kbPad, {
+        toValue: e.endCoordinates.height,
+        duration: e.duration || 240,
+        useNativeDriver: false,
+      }).start();
+    });
+    const hide = Keyboard.addListener('keyboardWillHide', (e) => {
+      Animated.timing(kbPad, {
+        toValue: 0,
+        duration: e.duration || 200,
+        useNativeDriver: false,
+      }).start();
+    });
+    return () => {
+      show.remove();
+      hide.remove();
+    };
+  }, [kbPad]);
 
   const hasChat = messages.length > 0;
   const hasText = input.trim().length > 0;
@@ -207,10 +230,7 @@ export default function AccueilScreen() {
     <Screen>
       <TopBar xp={profile?.xp ?? 0} streak={profile?.streak_days ?? 0} />
 
-      <KeyboardAvoidingView
-        style={styles.kav}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={0}>
+      <Animated.View style={[styles.kav, { paddingBottom: kbPad }]}>
         {hasChat ? (
           <Animated.View style={[styles.flex, { opacity: chatOpacity }]}>
             <FlatList
@@ -322,7 +342,7 @@ export default function AccueilScreen() {
             )}
           </View>
         </View>
-      </KeyboardAvoidingView>
+      </Animated.View>
     </Screen>
   );
 }
