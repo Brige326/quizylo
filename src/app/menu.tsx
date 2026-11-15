@@ -59,11 +59,8 @@ export default function MenuScreen() {
   };
 
   const onNewChat = () => {
-    if (isGuest) {
-      onAccount();
-      return;
-    }
-    router.replace('/chat');
+    // Ramène à l'espace conversation de l'accueil, vierge (comme écrire depuis l'accueil).
+    router.navigate({ pathname: '/(tabs)', params: { reset: String(Date.now()) } });
   };
 
   return (
