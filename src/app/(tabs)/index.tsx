@@ -64,8 +64,6 @@ export default function AccueilScreen() {
   const { profile, session, exitGuest } = useAuth();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  // Hauteur réelle de la TabBar (62 + marge de sécurité en bas) — pour caler la barre au clavier.
-  const tabBarHeight = 62 + Math.max(insets.bottom, Spacing.sm);
   const { reset, conversationId: convParam } = useLocalSearchParams<{
     reset?: string;
     conversationId?: string;
@@ -212,7 +210,7 @@ export default function AccueilScreen() {
       <KeyboardAvoidingView
         style={styles.kav}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={tabBarHeight}>
+        keyboardVerticalOffset={0}>
         {hasChat ? (
           <Animated.View style={[styles.flex, { opacity: chatOpacity }]}>
             <FlatList

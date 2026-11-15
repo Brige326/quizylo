@@ -1,6 +1,7 @@
 import { Feather, Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Keyboard, Platform, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Palette, Spacing } from '@/constants/theme';
@@ -34,6 +35,21 @@ const ICONS: Record<string, { icon: IconRenderer; center?: boolean }> = {
 
 export function TabBar({ state, navigateToTab }: TabBarProps) {
   const insets = useSafeAreaInsets();
+  const [keyboardShown, setKeyboardShown] = useState(false);
+
+  useEffect(() => {
+    const showEvt = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvt = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const s = Keyboard.addListener(showEvt, () => setKeyboardShown(true));
+    const h = Keyboard.addListener(hideEvt, () => setKeyboardShown(false));
+    return () => {
+      s.remove();
+      h.remove();
+    };
+  }, []);
+
+  // Comme ChatGPT/Claude : la barre du bas disparaît pendant la saisie pour coller la barre d'écriture au clavier.
+  if (keyboardShown) return null;
 
   return (
     <View style={[styles.bar, { paddingBottom: Math.max(insets.bottom, Spacing.sm) }]}>
