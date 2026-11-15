@@ -100,7 +100,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!mounted) return;
       setSession(nextSession);
       if (nextSession?.user?.id) {
-        loadProfile(nextSession.user.id);
+        // IMPORTANT : ne jamais appeler Supabase directement dans ce callback
+        // (deadlock du verrou auth → connexion qui charge à l'infini).
+        // On diffère la requête hors du callback.
+        const uid = nextSession.user.id;
+        setTimeout(() => {
+          if (mounted) void loadProfile(uid);
+        }, 0);
       } else {
         setProfile(null);
       }
