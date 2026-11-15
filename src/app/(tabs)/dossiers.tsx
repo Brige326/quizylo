@@ -10,11 +10,7 @@ export default function DossiersScreen() {
   const { profile } = useAuth();
   return (
     <Screen>
-      <TopBar
-        xp={profile?.xp ?? 0}
-        streak={profile?.streak_days ?? 0}
-        onPro={() => comingSoon('Quizylo PRO')}
-      />
+      <TopBar xp={profile?.xp ?? 0} streak={profile?.streak_days ?? 0} />
       <EmptyState
         icon="folder-open-outline"
         title="Transforme tes fichiers en savoir"

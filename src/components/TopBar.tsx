@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 
 import { Tappable } from '@/components/ui/Tappable';
@@ -13,14 +14,22 @@ type TopBarProps = {
 };
 
 export function TopBar({ xp = 0, streak = 0, onMenu, onPro }: TopBarProps) {
+  const router = useRouter();
   return (
     <View style={styles.row}>
-      <Tappable onPress={onMenu} hitSlop={10} accessibilityLabel="Menu" scaleTo={0.9}>
+      <Tappable
+        onPress={onMenu ?? (() => router.push('/menu'))}
+        hitSlop={10}
+        accessibilityLabel="Menu"
+        scaleTo={0.9}>
         <Ionicons name="menu" size={26} color={Palette.text} />
       </Tappable>
 
       <View style={styles.right}>
-        <Tappable onPress={onPro} style={styles.pro} accessibilityLabel="Obtenir PRO">
+        <Tappable
+          onPress={onPro ?? (() => router.push('/pro'))}
+          style={styles.pro}
+          accessibilityLabel="Obtenir PRO">
           <Text variant="bodyStrong" color={Palette.purple}>
             Obtenir
           </Text>

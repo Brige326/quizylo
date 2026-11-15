@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { Alert, ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { Mascot } from '@/components/ui/Mascot';
 import { Tappable } from '@/components/ui/Tappable';
@@ -26,37 +26,12 @@ const ACTIONS: Action[] = [
 ];
 
 export default function AccueilScreen() {
-  const { profile, signOut, isGuest, exitGuest } = useAuth();
+  const { profile } = useAuth();
   const router = useRouter();
-
-  const onMenu = () => {
-    if (isGuest) {
-      Alert.alert('Mode invité', 'Crée un compte pour sauvegarder ta progression et discuter avec Quizylo.', [
-        { text: 'Continuer en invité', style: 'cancel' },
-        {
-          text: 'Se connecter / créer un compte',
-          onPress: () => {
-            exitGuest();
-            router.replace('/(auth)/login');
-          },
-        },
-      ]);
-      return;
-    }
-    Alert.alert('Quizylo', profile?.full_name || 'Mon compte', [
-      { text: 'Annuler', style: 'cancel' },
-      { text: 'Se déconnecter', style: 'destructive', onPress: () => signOut() },
-    ]);
-  };
 
   return (
     <Screen>
-      <TopBar
-        xp={profile?.xp ?? 0}
-        streak={profile?.streak_days ?? 0}
-        onMenu={onMenu}
-        onPro={() => comingSoon('Quizylo PRO')}
-      />
+      <TopBar xp={profile?.xp ?? 0} streak={profile?.streak_days ?? 0} />
 
       {/* Zone centrale : hero */}
       <View style={styles.center}>

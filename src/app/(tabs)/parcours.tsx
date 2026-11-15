@@ -39,11 +39,7 @@ export default function ParcoursScreen() {
   if (!isGuest) {
     return (
       <Screen>
-        <TopBar
-          xp={profile?.xp ?? 0}
-          streak={profile?.streak_days ?? 0}
-          onPro={() => comingSoon('Quizylo PRO')}
-        />
+        <TopBar xp={profile?.xp ?? 0} streak={profile?.streak_days ?? 0} />
         <EmptyState
           icon="trail-sign-outline"
           title="Ton parcours commence ici"
