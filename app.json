@@ -1,12 +1,12 @@
 {
   "expo": {
-    "name": "quizylo",
+    "name": "Quizylo",
     "slug": "quizylo",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "quizylo",
-    "userInterfaceStyle": "automatic",
+    "userInterfaceStyle": "dark",
     "ios": {
       "icon": "./assets/expo.icon"
     },
@@ -28,7 +28,8 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#208AEF",
+          "backgroundColor": "#0A0B0F",
+          "dark": { "backgroundColor": "#0A0B0F" },
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 76
         }
