@@ -47,6 +47,7 @@ function RootNavigator() {
         options={{ presentation: 'transparentModal', animation: 'none' }}
       />
       <Stack.Screen name="pro" options={{ animation: 'slide_from_bottom', presentation: 'modal' }} />
+      <Stack.Screen name="settings" options={{ animation: 'slide_from_right' }} />
     </Stack>
   );
 }

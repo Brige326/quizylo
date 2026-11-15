@@ -105,15 +105,11 @@ export default function MenuScreen() {
   const close = () => dismissThen(() => router.canGoBack() && router.back());
 
   const onAccount = () => {
-    if (isGuest) {
-      exitGuest();
-      router.replace('/(auth)/login');
-      return;
-    }
-    Alert.alert('Compte', name, [
-      { text: 'Annuler', style: 'cancel' },
-      { text: 'Se déconnecter', style: 'destructive', onPress: () => signOut() },
-    ]);
+    // On referme le menu en douceur, puis on ouvre le vrai écran Paramètres.
+    dismissThen(() => {
+      if (router.canGoBack()) router.back();
+      router.push('/settings');
+    });
   };
 
   const onNewChat = () => {
