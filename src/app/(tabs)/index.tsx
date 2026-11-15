@@ -6,14 +6,14 @@ import {
   Animated,
   FlatList,
   Keyboard,
-  LayoutAnimation,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   TextInput,
   View,
 } from 'react-native';
+import Reanimated, { useAnimatedStyle } from 'react-native-reanimated';
+import { useReanimatedKeyboardAnimation } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Mascot } from '@/components/ui/Mascot';
@@ -24,7 +24,7 @@ import { TopBar } from '@/components/TopBar';
 import { Palette, Radius, Spacing, Type } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth';
 import { comingSoon } from '@/lib/ui';
-import { getTabBarHeight } from '@/lib/layoutStore';
+import { getTabBarHeight, subscribeTabBarHeight } from '@/lib/layoutStore';
 import { supabase } from '@/lib/supabase';
 
 type ChatMessage = { id: string; role: 'user' | 'assistant'; content: string };
@@ -63,33 +63,19 @@ export default function AccueilScreen() {
   const inputRef = useRef<ComponentRef<typeof TextInput>>(null);
   const listRef = useRef<FlatList<ChatMessage>>(null);
   const chatOpacity = useRef(new Animated.Value(0)).current;
-  const [kbPad, setKbPad] = useState(0);
   const heroOpacity = useRef(new Animated.Value(1)).current;
   const chipsOpacity = useRef(new Animated.Value(1)).current;
 
-  // Remontée de la barre = hauteur clavier − hauteur réelle de la TabBar.
-  // On anime avec LayoutAnimation.Types.keyboard : la SEULE courbe RN qui épouse
-  // exactement la courbe native du clavier iOS → mouvement parfaitement solidaire, sans saut.
-  useEffect(() => {
-    if (Platform.OS !== 'ios') return;
-    const animateWith = (duration: number) =>
-      LayoutAnimation.configureNext({
-        duration: duration || 250,
-        update: { type: LayoutAnimation.Types.keyboard },
-      });
-    const show = Keyboard.addListener('keyboardWillShow', (e) => {
-      animateWith(e.duration);
-      setKbPad(Math.max(0, e.endCoordinates.height - getTabBarHeight()));
-    });
-    const hide = Keyboard.addListener('keyboardWillHide', (e) => {
-      animateWith(e.duration);
-      setKbPad(0);
-    });
-    return () => {
-      show.remove();
-      hide.remove();
-    };
-  }, []);
+  // Suivi NATIF du clavier, image par image, sur le thread UI (react-native-keyboard-controller).
+  // height.value va de 0 (fermé) à -hauteurClavier (ouvert) et suit exactement le doigt/clavier.
+  const { height: kbHeight } = useReanimatedKeyboardAnimation();
+  const [tabH, setTabH] = useState(getTabBarHeight());
+  useEffect(() => subscribeTabBarHeight(setTabH), []);
+
+  // On remonte la barre de (hauteur clavier − hauteur réelle de la TabBar), pile collée au clavier.
+  const kavAnimatedStyle = useAnimatedStyle(() => ({
+    paddingBottom: Math.max(0, -kbHeight.value - tabH),
+  }));
 
   const hasChat = messages.length > 0;
   const hasText = input.trim().length > 0;
@@ -232,7 +218,7 @@ export default function AccueilScreen() {
     <Screen>
       <TopBar xp={profile?.xp ?? 0} streak={profile?.streak_days ?? 0} />
 
-      <View style={[styles.kav, { paddingBottom: kbPad }]}>
+      <Reanimated.View style={[styles.kav, kavAnimatedStyle]}>
         {hasChat ? (
           <Animated.View style={[styles.flex, { opacity: chatOpacity }]}>
             <FlatList
@@ -335,7 +321,7 @@ export default function AccueilScreen() {
             )}
           </View>
         </View>
-      </View>
+      </Reanimated.View>
     </Screen>
   );
 }

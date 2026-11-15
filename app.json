@@ -8,9 +8,12 @@
     "scheme": "quizylo",
     "userInterfaceStyle": "dark",
     "ios": {
-      "icon": "./assets/expo.icon"
+      "icon": "./assets/expo.icon",
+      "bundleIdentifier": "com.khadrix.quizylo",
+      "supportsTablet": true
     },
     "android": {
+      "package": "com.khadrix.quizylo",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
