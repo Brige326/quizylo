@@ -25,6 +25,7 @@ import { TopBar } from '@/components/TopBar';
 import { Palette, Radius, Spacing, Type } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth';
 import { comingSoon } from '@/lib/ui';
+import { getTabBarHeight } from '@/lib/layoutStore';
 import { supabase } from '@/lib/supabase';
 
 if (
@@ -80,20 +81,22 @@ export default function AccueilScreen() {
   const chatOpacity = useRef(new Animated.Value(0)).current;
   const kbPad = useRef(new Animated.Value(0)).current;
 
-  // On remonte le contenu de la hauteur EXACTE du clavier (iOS) pour coller la barre au clavier.
+  // On remonte la barre de (hauteur clavier − hauteur réelle de la TabBar),
+  // avec la MÊME durée que le clavier, pour un mouvement « rattaché » sans saut.
+  // La TabBar reste en place (le clavier la recouvre) : rien n'apparaît/disparaît brusquement.
   useEffect(() => {
     if (Platform.OS !== 'ios') return;
     const show = Keyboard.addListener('keyboardWillShow', (e) => {
       Animated.timing(kbPad, {
-        toValue: e.endCoordinates.height,
-        duration: e.duration || 240,
+        toValue: Math.max(0, e.endCoordinates.height - getTabBarHeight()),
+        duration: e.duration || 250,
         useNativeDriver: false,
       }).start();
     });
     const hide = Keyboard.addListener('keyboardWillHide', (e) => {
       Animated.timing(kbPad, {
         toValue: 0,
-        duration: e.duration || 200,
+        duration: e.duration || 250,
         useNativeDriver: false,
       }).start();
     });
