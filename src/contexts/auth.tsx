@@ -10,6 +10,19 @@ import {
 
 import { isSupabaseConfigured, supabase } from '@/lib/supabase';
 
+/** Garantit qu'une promesse ne bloque jamais indéfiniment (anti chargement infini). */
+function withTimeout<T>(p: Promise<T>, ms = 20000): Promise<T> {
+  return Promise.race([
+    p,
+    new Promise<T>((_, reject) => setTimeout(() => reject(new Error('timeout')), ms)),
+  ]);
+}
+
+function friendly(message: string): string {
+  if (message === 'timeout') return 'Délai dépassé. Vérifie ta connexion et réessaie.';
+  return message;
+}
+
 export type Profile = {
   id: string;
   username: string | null;
@@ -121,25 +134,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signUp = useCallback<AuthContextValue['signUp']>(
     async ({ email, password, fullName }) => {
-      const { data, error } = await supabase.auth.signUp({
-        email: email.trim(),
-        password,
-        options: { data: { full_name: fullName.trim() } },
-      });
-      if (error) return { error: error.message, needsConfirmation: false };
-      // Pas de session => confirmation e-mail requise côté projet.
-      return { error: null, needsConfirmation: !data.session };
+      try {
+        const { data, error } = await withTimeout(
+          supabase.auth.signUp({
+            email: email.trim(),
+            password,
+            options: { data: { full_name: fullName.trim() } },
+          }),
+        );
+        if (error) return { error: error.message, needsConfirmation: false };
+        // Pas de session => confirmation e-mail requise côté projet.
+        return { error: null, needsConfirmation: !data.session };
+      } catch (e) {
+        return { error: friendly((e as Error)?.message ?? 'Erreur'), needsConfirmation: false };
+      }
     },
     [],
   );
 
   const signIn = useCallback<AuthContextValue['signIn']>(
     async ({ email, password }) => {
-      const { error } = await supabase.auth.signInWithPassword({
-        email: email.trim(),
-        password,
-      });
-      return { error: error ? error.message : null };
+      try {
+        const { error } = await withTimeout(
+          supabase.auth.signInWithPassword({ email: email.trim(), password }),
+        );
+        return { error: error ? error.message : null };
+      } catch (e) {
+        return { error: friendly((e as Error)?.message ?? 'Erreur') };
+      }
     },
     [],
   );
