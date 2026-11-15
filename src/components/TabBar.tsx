@@ -1,4 +1,5 @@
 import { Feather, Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -43,7 +44,10 @@ export function TabBar({ state, navigateToTab }: TabBarProps) {
         const color = focused ? Palette.text : Palette.textMuted;
 
         const onPress = () => {
-          if (!focused) navigateToTab(route.key);
+          if (!focused) {
+            Haptics.selectionAsync().catch(() => {});
+            navigateToTab(route.key);
+          }
         };
 
         if (config.center) {

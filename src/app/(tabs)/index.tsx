@@ -1,7 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Alert, ScrollView, StyleSheet, View } from 'react-native';
 
 import { Mascot } from '@/components/ui/Mascot';
+import { Tappable } from '@/components/ui/Tappable';
 import { Text } from '@/components/ui/Text';
 import { Screen } from '@/components/ui/Screen';
 import { TopBar } from '@/components/TopBar';
@@ -9,17 +10,18 @@ import { Palette, Radius, Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth';
 import { comingSoon } from '@/lib/ui';
 
-type Action = { key: string; label: string; icon: keyof typeof Ionicons.glyphMap };
+type Action = { key: string; label: string; icon: keyof typeof Ionicons.glyphMap; color: string };
 
 const ACTIONS: Action[] = [
-  { key: 'resoudre', label: 'Résoudre', icon: 'bulb-outline' },
-  { key: 'quiz', label: 'Quiz', icon: 'help-circle-outline' },
-  { key: 'examen', label: 'Examen blanc', icon: 'document-text-outline' },
-  { key: 'resume', label: 'Résumer', icon: 'reader-outline' },
-  { key: 'redaction', label: 'Rédaction', icon: 'create-outline' },
-  { key: 'recherche', label: 'Rechercher', icon: 'search-outline' },
-  { key: 'aide', label: 'Aide-mémoire', icon: 'albums-outline' },
-  { key: 'vocab', label: 'Vocabulaire', icon: 'language-outline' },
+  { key: 'resoudre', label: 'Résoudre', icon: 'camera', color: Palette.info },
+  { key: 'quiz', label: 'Quiz', icon: 'help-circle', color: '#FF4D8D' },
+  { key: 'examen', label: 'Examen blanc', icon: 'document-text', color: '#5B8CFF' },
+  { key: 'resume', label: 'Résumer', icon: 'reader', color: Palette.primary },
+  { key: 'redaction', label: 'Rédaction', icon: 'create', color: Palette.purple },
+  { key: 'rechercher', label: 'Rechercher', icon: 'search', color: '#2DD4BF' },
+  { key: 'aide', label: 'Aide-mémoire', icon: 'albums', color: Palette.streak },
+  { key: 'vocab', label: 'Vocabulaire', icon: 'language', color: '#F5B301' },
+  { key: 'image', label: 'Créer une image', icon: 'image', color: '#A855F7' },
 ];
 
 export default function AccueilScreen() {
@@ -41,98 +43,118 @@ export default function AccueilScreen() {
         onPro={() => comingSoon('Quizylo PRO')}
       />
 
-      <ScrollView
-        contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}>
-        <View style={styles.hero}>
-          <Mascot size={76} />
-          <Text variant="title" center style={styles.heroTitle}>
-            Entraîne-toi avec de vrais examens blancs.
-          </Text>
-          <Pressable
-            style={({ pressed }) => [styles.heroBtn, pressed && styles.pressed]}
-            onPress={() => comingSoon('Créer un examen blanc')}>
-            <Text variant="bodyStrong" color={Palette.onPrimary}>
+      {/* Zone centrale : hero */}
+      <View style={styles.center}>
+        <View style={styles.heroWrap}>
+          <View style={styles.mascotWrap}>
+            <Mascot size={78} />
+          </View>
+          <View style={styles.heroCard}>
+            <Text variant="title" center style={styles.heroTitle}>
+              Entraîne-toi avec de vrais examens blancs.
+            </Text>
+          </View>
+          <Tappable style={styles.cta} onPress={() => comingSoon('Créer un examen blanc')}>
+            <Text variant="bodyStrong" color={Palette.background}>
               Créer un examen blanc
             </Text>
-          </Pressable>
+          </Tappable>
         </View>
+      </View>
 
-        <Text variant="small" color={Palette.textSecondary} style={styles.sectionLabel}>
-          Que veux-tu faire ?
-        </Text>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.chips}>
-          {ACTIONS.map((a) => (
-            <Pressable
-              key={a.key}
-              style={({ pressed }) => [styles.chip, pressed && styles.pressed]}
-              onPress={() => comingSoon(a.label)}>
-              <Ionicons name={a.icon} size={16} color={Palette.primary} />
-              <Text variant="small">{a.label}</Text>
-            </Pressable>
-          ))}
-        </ScrollView>
+      {/* Actions rapides */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.chips}>
+        {ACTIONS.map((a) => (
+          <Tappable key={a.key} style={styles.chip} onPress={() => comingSoon(a.label)}>
+            <Ionicons name={a.icon} size={16} color={a.color} />
+            <Text variant="small">{a.label}</Text>
+          </Tappable>
+        ))}
       </ScrollView>
 
-      <Pressable
-        style={styles.chatBar}
-        onPress={() => comingSoon('Chat IA')}
-        accessibilityRole="button">
-        <Ionicons name="add" size={22} color={Palette.textSecondary} />
-        <Text variant="body" color={Palette.textMuted} style={styles.chatPlaceholder}>
-          Demande à Quizylo…
-        </Text>
-        <Ionicons name="camera-outline" size={20} color={Palette.textSecondary} />
-      </Pressable>
+      {/* Barre de chat */}
+      <View style={styles.chatRow}>
+        <Tappable
+          style={styles.plus}
+          onPress={() => comingSoon('Pièce jointe')}
+          accessibilityLabel="Ajouter"
+          scaleTo={0.9}>
+          <Ionicons name="add" size={24} color={Palette.text} />
+        </Tappable>
+        <Tappable style={styles.chatBar} onPress={() => comingSoon('Chat IA')} haptic={false}>
+          <Text variant="body" color={Palette.textMuted} style={styles.chatPlaceholder}>
+            Demande à Quizylo…
+          </Text>
+          <Ionicons name="camera-outline" size={20} color={Palette.textSecondary} />
+          <Ionicons name="mic-outline" size={20} color={Palette.textSecondary} />
+        </Tappable>
+      </View>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  content: { paddingBottom: Spacing.xxl },
-  hero: {
-    alignItems: 'center',
-    gap: Spacing.lg,
+  center: { flex: 1, justifyContent: 'center', paddingHorizontal: Spacing.lg },
+  heroWrap: { alignItems: 'center' },
+  mascotWrap: { zIndex: 2, marginBottom: -Spacing.lg },
+  heroCard: {
+    backgroundColor: Palette.surfaceElevated,
+    borderRadius: Radius.xl,
     paddingTop: Spacing.xxl,
-    paddingHorizontal: Spacing.lg,
+    paddingBottom: Spacing.xl,
+    paddingHorizontal: Spacing.xl,
+    alignSelf: 'stretch',
   },
-  heroTitle: { maxWidth: 280, marginTop: Spacing.sm },
-  heroBtn: {
-    backgroundColor: Palette.primary,
+  heroTitle: { fontSize: 24, lineHeight: 30 },
+  cta: {
+    backgroundColor: '#F4F4F5',
     borderRadius: Radius.pill,
     paddingHorizontal: Spacing.xl,
     paddingVertical: Spacing.md,
-    marginTop: Spacing.sm,
+    marginTop: Spacing.lg,
   },
-  sectionLabel: { marginTop: Spacing.xxl, marginBottom: Spacing.md, marginLeft: Spacing.lg },
-  chips: { paddingHorizontal: Spacing.lg, gap: Spacing.sm },
+  chips: { paddingHorizontal: Spacing.lg, gap: Spacing.sm, paddingBottom: Spacing.md },
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 7,
     backgroundColor: Palette.surface,
     borderWidth: 1,
     borderColor: Palette.border,
     borderRadius: Radius.pill,
     paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
+    paddingVertical: 10,
   },
-  chatBar: {
+  chatRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.sm,
-    marginHorizontal: Spacing.lg,
-    marginBottom: Spacing.sm,
     paddingHorizontal: Spacing.lg,
-    height: 52,
+    paddingBottom: Spacing.sm,
+  },
+  plus: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: Palette.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  chatBar: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+    paddingHorizontal: Spacing.lg,
+    height: 48,
     backgroundColor: Palette.surface,
     borderWidth: 1,
     borderColor: Palette.border,
-    borderRadius: Radius.lg,
+    borderRadius: Radius.pill,
   },
   chatPlaceholder: { flex: 1 },
-  pressed: { opacity: 0.85 },
 });

@@ -1,8 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
-import { Palette, Radius, Spacing } from '@/constants/theme';
+import { Tappable } from '@/components/ui/Tappable';
 import { Text } from '@/components/ui/Text';
+import { Palette, Radius, Spacing } from '@/constants/theme';
 
 type TopBarProps = {
   xp?: number;
@@ -14,26 +15,30 @@ type TopBarProps = {
 export function TopBar({ xp = 0, streak = 0, onMenu, onPro }: TopBarProps) {
   return (
     <View style={styles.row}>
-      <Pressable hitSlop={10} onPress={onMenu} accessibilityLabel="Menu">
+      <Tappable onPress={onMenu} hitSlop={10} accessibilityLabel="Menu" scaleTo={0.9}>
         <Ionicons name="menu" size={26} color={Palette.text} />
-      </Pressable>
+      </Tappable>
 
       <View style={styles.right}>
-        <Pressable style={styles.proPill} onPress={onPro} accessibilityRole="button">
-          <Ionicons name="flash" size={13} color={Palette.purple} />
-          <Text variant="caption" color={Palette.purple}>
-            Obtenir PRO
+        <Tappable onPress={onPro} style={styles.pro} accessibilityLabel="Obtenir PRO">
+          <Text variant="bodyStrong" color={Palette.purple}>
+            Obtenir
           </Text>
-        </Pressable>
+          <View style={styles.proBadge}>
+            <Text variant="caption" color="#fff">
+              PRO
+            </Text>
+          </View>
+        </Tappable>
 
         <View style={styles.stat}>
-          <Ionicons name="diamond" size={15} color={Palette.info} />
           <Text variant="bodyStrong">{xp}</Text>
+          <Ionicons name="flash" size={16} color={Palette.info} />
         </View>
 
         <View style={styles.stat}>
-          <Ionicons name="flame" size={15} color={Palette.streak} />
           <Text variant="bodyStrong">{streak}</Text>
+          <Ionicons name="flame" size={16} color={Palette.streak} />
         </View>
       </View>
     </View>
@@ -48,15 +53,13 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: Spacing.lg,
   },
-  right: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
-  proPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: Palette.purpleSurface,
-    borderRadius: Radius.pill,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+  right: { flexDirection: 'row', alignItems: 'center', gap: Spacing.lg },
+  pro: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  proBadge: {
+    backgroundColor: Palette.purple,
+    borderRadius: Radius.sm,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
   },
-  stat: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  stat: { flexDirection: 'row', alignItems: 'center', gap: 5 },
 });

@@ -1,5 +1,7 @@
+import * as Haptics from 'expo-haptics';
 import {
   ActivityIndicator,
+  type GestureResponderEvent,
   Pressable,
   type PressableProps,
   StyleSheet,
@@ -26,13 +28,19 @@ export function Button({
   disabled,
   fullWidth = true,
   left,
+  onPress,
   ...rest
 }: ButtonProps) {
   const isDisabled = disabled || loading;
+  const handlePress = (e: GestureResponderEvent) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    onPress?.(e);
+  };
   return (
     <Pressable
       accessibilityRole="button"
       disabled={isDisabled}
+      onPress={handlePress}
       style={({ pressed }) => [
         styles.base,
         fullWidth && styles.fullWidth,
