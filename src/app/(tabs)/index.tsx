@@ -5,9 +5,11 @@ import {
   Alert,
   Animated,
   FlatList,
+  Keyboard,
   KeyboardAvoidingView,
   LayoutAnimation,
   Platform,
+  Pressable,
   ScrollView,
   StyleSheet,
   TextInput,
@@ -44,14 +46,6 @@ const smooth = () => {
 type ChatMessage = { id: string; role: 'user' | 'assistant'; content: string };
 type Chip = { key: string; label: string; icon: keyof typeof Ionicons.glyphMap; color: string };
 
-const SUBJECTS: Chip[] = [
-  { key: 'info', label: 'Informatique', icon: 'code-slash', color: Palette.primary },
-  { key: 'math', label: 'Mathématiques', icon: 'calculator', color: Palette.primary },
-  { key: 'med', label: 'Médecine', icon: 'medkit', color: Palette.primary },
-  { key: 'phys', label: 'Physique', icon: 'planet', color: Palette.primary },
-  { key: 'bio', label: 'Biologie', icon: 'leaf', color: Palette.primary },
-];
-
 const ACTIONS: Chip[] = [
   { key: 'resoudre', label: 'Résoudre', icon: 'camera', color: Palette.info },
   { key: 'quiz', label: 'Quiz', icon: 'help-circle', color: '#FF4D8D' },
@@ -70,6 +64,8 @@ export default function AccueilScreen() {
   const { profile, session, exitGuest } = useAuth();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  // Hauteur réelle de la TabBar (62 + marge de sécurité en bas) — pour caler la barre au clavier.
+  const tabBarHeight = 62 + Math.max(insets.bottom, Spacing.sm);
   const { reset, conversationId: convParam } = useLocalSearchParams<{
     reset?: string;
     conversationId?: string;
@@ -216,7 +212,7 @@ export default function AccueilScreen() {
       <KeyboardAvoidingView
         style={styles.kav}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={insets.bottom + 56}>
+        keyboardVerticalOffset={tabBarHeight}>
         {hasChat ? (
           <Animated.View style={[styles.flex, { opacity: chatOpacity }]}>
             <FlatList
@@ -227,36 +223,21 @@ export default function AccueilScreen() {
               renderItem={({ item }) => <Bubble message={item} />}
               onContentSizeChange={scrollToEnd}
               keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="interactive"
               showsVerticalScrollIndicator={false}
             />
           </Animated.View>
         ) : (
-          <View style={styles.welcome}>
+          <Pressable style={styles.welcome} onPress={() => Keyboard.dismiss()}>
             <Mascot size={76} />
             {showHeroText ? (
-              <View style={styles.heroZone}>
-                <View style={styles.heroCard}>
-                  <Text variant="title" center style={styles.heroTitle}>
-                    Quel est le sujet de ton prochain exam ?
-                  </Text>
-                </View>
-                <View style={styles.subjects}>
-                  {SUBJECTS.map((s) => (
-                    <Tappable key={s.key} style={styles.subjectChip} onPress={() => comingSoon(s.label)}>
-                      <Ionicons name={s.icon} size={16} color={s.color} />
-                      <Text variant="small" style={{ fontWeight: '700' }}>
-                        {s.label}
-                      </Text>
-                    </Tappable>
-                  ))}
-                </View>
-                <Tappable style={styles.seeAll} onPress={() => comingSoon('Tous les sujets')}>
-                  <Text variant="bodyStrong">Voir tous les sujets</Text>
-                  <Ionicons name="arrow-forward" size={16} color={Palette.text} />
-                </Tappable>
+              <View style={styles.heroCard}>
+                <Text variant="title" center style={styles.heroTitle}>
+                  Quel est le sujet de ton prochain exam ?
+                </Text>
               </View>
             ) : null}
-          </View>
+          </Pressable>
         )}
 
         {sending ? (
@@ -285,7 +266,7 @@ export default function AccueilScreen() {
         ) : null}
 
         {/* Barre d'écriture */}
-        <View style={[styles.inputRow, { paddingBottom: Math.max(insets.bottom, Spacing.md) }]}>
+        <View style={[styles.inputRow, { paddingBottom: focused ? Spacing.sm : Spacing.md }]}>
           <Tappable
             style={styles.plus}
             onPress={() => comingSoon('Pièce jointe')}
@@ -461,11 +442,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.md,
     paddingVertical: 10,
   },
-  inputRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, paddingHorizontal: Spacing.lg },
+  inputRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, paddingHorizontal: Spacing.md },
   plus: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     borderWidth: 1,
     borderColor: Palette.border,
     alignItems: 'center',
