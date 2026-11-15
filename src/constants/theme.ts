@@ -9,14 +9,14 @@ import { Platform } from 'react-native';
 
 /** Palette Quizylo — fond très sombre, accent vert vif, mascotte violette. */
 export const Palette = {
-  // Fonds
-  background: '#0A0B0F',
-  surface: '#141519',
-  surfaceElevated: '#1B1D22',
-  surfaceSelected: '#23262D',
+  // Fonds — noir doux qui tend légèrement vers le gris (moins dur que le noir pur)
+  background: '#14151B',
+  surface: '#1D1F26',
+  surfaceElevated: '#262932',
+  surfaceSelected: '#2F323C',
   // Bordures / séparateurs
-  border: '#24262D',
-  borderSubtle: '#1A1C21',
+  border: '#2E313B',
+  borderSubtle: '#212329',
   // Texte
   text: '#FFFFFF',
   textSecondary: '#9BA1AC',

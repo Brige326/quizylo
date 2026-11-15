@@ -1,10 +1,9 @@
-import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 
 import { Tappable } from '@/components/ui/Tappable';
 import { Text } from '@/components/ui/Text';
-import { Palette, Radius, Spacing } from '@/constants/theme';
+import { Fonts, Palette, Radius, Spacing } from '@/constants/theme';
 
 type TopBarProps = {
   xp?: number;
@@ -13,62 +12,88 @@ type TopBarProps = {
   onPro?: () => void;
 };
 
-export function TopBar({ xp = 0, streak = 0, onMenu, onPro }: TopBarProps) {
+/** Icône menu « artistique » : trois barres arrondies, largeurs inégales et décalées. */
+function MenuGlyph() {
+  return (
+    <View style={styles.menu}>
+      <View style={[styles.menuBar, { width: 30 }]} />
+      <View style={[styles.menuBar, { width: 15, marginLeft: 6, backgroundColor: Palette.purple }]} />
+      <View style={[styles.menuBar, { width: 24, marginLeft: 2 }]} />
+    </View>
+  );
+}
+
+export function TopBar({ onMenu, onPro }: TopBarProps) {
   const router = useRouter();
   return (
     <View style={styles.row}>
       <Tappable
         onPress={onMenu ?? (() => router.push('/menu'))}
-        hitSlop={10}
+        hitSlop={12}
         accessibilityLabel="Menu"
-        scaleTo={0.9}>
-        <Ionicons name="menu" size={26} color={Palette.text} />
+        scaleTo={0.88}>
+        <MenuGlyph />
       </Tappable>
 
-      <View style={styles.right}>
-        <Tappable
-          onPress={onPro ?? (() => router.push('/pro'))}
-          style={styles.pro}
-          accessibilityLabel="Obtenir PRO">
-          <Text variant="bodyStrong" color={Palette.purple}>
-            Obtenir
-          </Text>
-          <View style={styles.proBadge}>
-            <Text variant="caption" color="#fff">
-              PRO
-            </Text>
-          </View>
-        </Tappable>
-
-        <View style={styles.stat}>
-          <Text variant="bodyStrong">{xp}</Text>
-          <Ionicons name="flash" size={16} color={Palette.info} />
+      <Tappable
+        onPress={onPro ?? (() => router.push('/pro'))}
+        style={styles.pro}
+        scaleTo={0.94}
+        accessibilityLabel="Obtenir PRO">
+        <Text style={styles.obtenir}>Obtenir</Text>
+        <View style={styles.proBadge}>
+          <Text style={styles.proText}>PRO</Text>
         </View>
-
-        <View style={styles.stat}>
-          <Text variant="bodyStrong">{streak}</Text>
-          <Ionicons name="flame" size={16} color={Palette.streak} />
-        </View>
-      </View>
+      </Tappable>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   row: {
-    height: 52,
+    height: 54,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: Spacing.lg,
   },
-  right: { flexDirection: 'row', alignItems: 'center', gap: Spacing.lg },
-  pro: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  // Menu
+  menu: { gap: 6, paddingVertical: 2 },
+  menuBar: {
+    height: 3,
+    borderRadius: 2,
+    backgroundColor: Palette.text,
+  },
+  // Obtenir PRO
+  pro: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: Palette.purpleSurface,
+    borderRadius: Radius.pill,
+    paddingLeft: 14,
+    paddingRight: 6,
+    paddingVertical: 6,
+  },
+  obtenir: {
+    color: Palette.purple,
+    fontSize: 16,
+    fontWeight: '700',
+    fontFamily: Fonts.rounded,
+    fontStyle: 'italic',
+    letterSpacing: 0.2,
+  },
   proBadge: {
     backgroundColor: Palette.purple,
-    borderRadius: Radius.sm,
-    paddingHorizontal: 7,
-    paddingVertical: 2,
+    borderRadius: Radius.pill,
+    paddingHorizontal: 11,
+    paddingVertical: 3,
   },
-  stat: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  proText: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '800',
+    fontFamily: Fonts.rounded,
+    letterSpacing: 2,
+  },
 });
