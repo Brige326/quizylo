@@ -23,7 +23,7 @@ import { supabase } from '@/lib/supabase';
 type ChatMessage = { id: string; role: 'user' | 'assistant'; content: string };
 
 export default function ChatScreen() {
-  const { session } = useAuth();
+  const { session, isGuest, exitGuest } = useAuth();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const userId = session?.user?.id;
@@ -111,6 +111,29 @@ export default function ChatScreen() {
         <View style={{ width: 26 }} />
       </View>
 
+      {isGuest ? (
+        <View style={styles.empty}>
+          <Mascot size={72} />
+          <Text variant="heading" center style={{ marginTop: Spacing.lg }}>
+            Connecte-toi pour discuter
+          </Text>
+          <Text variant="body" color={Palette.textSecondary} center style={{ maxWidth: 280 }}>
+            Le chat avec Quizylo nécessite un compte pour sauvegarder tes échanges.
+          </Text>
+          <View style={{ height: Spacing.lg }} />
+          <Tappable
+            style={styles.guestCta}
+            onPress={() => {
+              exitGuest();
+              router.replace('/(auth)/login');
+            }}>
+            <Text variant="bodyStrong" color={Palette.background}>
+              Créer un compte
+            </Text>
+          </Tappable>
+        </View>
+      ) : (
+
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -167,6 +190,7 @@ export default function ChatScreen() {
           </Tappable>
         </View>
       </KeyboardAvoidingView>
+      )}
     </View>
   );
 }
@@ -239,4 +263,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   sendBtnOff: { backgroundColor: Palette.surfaceSelected },
+  guestCta: {
+    backgroundColor: Palette.primary,
+    borderRadius: Radius.pill,
+    paddingHorizontal: Spacing.xl,
+    paddingVertical: Spacing.md,
+  },
 });

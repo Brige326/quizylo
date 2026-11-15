@@ -26,6 +26,9 @@ type AuthContextValue = {
   session: Session | null;
   profile: Profile | null;
   initializing: boolean;
+  isGuest: boolean;
+  enterGuest: () => void;
+  exitGuest: () => void;
   signUp: (params: {
     email: string;
     password: string;
@@ -45,6 +48,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [initializing, setInitializing] = useState(true);
+  const [isGuest, setIsGuest] = useState(false);
 
   const loadProfile = useCallback(async (userId: string) => {
     const { data, error } = await supabase
@@ -137,15 +141,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signOut = useCallback(async () => {
     await supabase.auth.signOut();
     setProfile(null);
+    setIsGuest(false);
   }, []);
+
+  const enterGuest = useCallback(() => setIsGuest(true), []);
+  const exitGuest = useCallback(() => setIsGuest(false), []);
 
   const refreshProfile = useCallback(async () => {
     if (session?.user?.id) await loadProfile(session.user.id);
   }, [session, loadProfile]);
 
   const value = useMemo<AuthContextValue>(
-    () => ({ session, profile, initializing, signUp, signIn, signOut, refreshProfile }),
-    [session, profile, initializing, signUp, signIn, signOut, refreshProfile],
+    () => ({
+      session,
+      profile,
+      initializing,
+      isGuest,
+      enterGuest,
+      exitGuest,
+      signUp,
+      signIn,
+      signOut,
+      refreshProfile,
+    }),
+    [session, profile, initializing, isGuest, enterGuest, exitGuest, signUp, signIn, signOut, refreshProfile],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

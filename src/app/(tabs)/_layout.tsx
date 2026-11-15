@@ -4,8 +4,8 @@ import { TabBar } from '@/components/TabBar';
 import { useAuth } from '@/contexts/auth';
 
 export default function TabsLayout() {
-  const { session } = useAuth();
-  if (!session) return <Redirect href="/(auth)/login" />;
+  const { session, isGuest } = useAuth();
+  if (!session && !isGuest) return <Redirect href="/(auth)/login" />;
 
   return (
     <Tabs

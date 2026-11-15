@@ -26,10 +26,23 @@ const ACTIONS: Action[] = [
 ];
 
 export default function AccueilScreen() {
-  const { profile, signOut } = useAuth();
+  const { profile, signOut, isGuest, exitGuest } = useAuth();
   const router = useRouter();
 
   const onMenu = () => {
+    if (isGuest) {
+      Alert.alert('Mode invité', 'Crée un compte pour sauvegarder ta progression et discuter avec Quizylo.', [
+        { text: 'Continuer en invité', style: 'cancel' },
+        {
+          text: 'Se connecter / créer un compte',
+          onPress: () => {
+            exitGuest();
+            router.replace('/(auth)/login');
+          },
+        },
+      ]);
+      return;
+    }
     Alert.alert('Quizylo', profile?.full_name || 'Mon compte', [
       { text: 'Annuler', style: 'cancel' },
       { text: 'Se déconnecter', style: 'destructive', onPress: () => signOut() },

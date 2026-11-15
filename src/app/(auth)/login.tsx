@@ -17,8 +17,13 @@ import { Palette, Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth';
 
 export default function LoginScreen() {
-  const { signIn } = useAuth();
+  const { signIn, enterGuest } = useAuth();
   const router = useRouter();
+
+  const onExplore = () => {
+    enterGuest();
+    router.replace('/(tabs)');
+  };
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -86,6 +91,7 @@ export default function LoginScreen() {
             ) : null}
 
             <Button label="Se connecter" loading={loading} onPress={onSubmit} />
+            <Button label="Explorer sans compte" variant="secondary" onPress={onExplore} />
           </View>
 
           <View style={styles.footer}>
