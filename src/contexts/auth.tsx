@@ -8,7 +8,7 @@ import {
   useState,
 } from 'react';
 
-import { supabase } from '@/lib/supabase';
+import { isSupabaseConfigured, supabase } from '@/lib/supabase';
 
 export type Profile = {
   id: string;
@@ -62,17 +62,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let mounted = true;
 
-    supabase.auth.getSession().then(({ data }) => {
-      if (!mounted) return;
-      setSession(data.session);
-      if (data.session?.user?.id) {
-        loadProfile(data.session.user.id).finally(() => {
-          if (mounted) setInitializing(false);
-        });
-      } else {
-        setInitializing(false);
-      }
-    });
+    // Si la config Supabase manque, on ne tente rien : on sort de l'écran de
+    // chargement immédiatement (l'app affichera un état clair, jamais un écran noir).
+    if (!isSupabaseConfigured) {
+      setInitializing(false);
+      return;
+    }
+
+    // Filet de sécurité : quoi qu'il arrive, on ne reste pas bloqué au chargement.
+    const safety = setTimeout(() => {
+      if (mounted) setInitializing(false);
+    }, 5000);
+
+    supabase.auth
+      .getSession()
+      .then(({ data }) => {
+        if (!mounted) return;
+        setSession(data.session);
+        if (data.session?.user?.id) {
+          loadProfile(data.session.user.id).finally(() => {
+            if (mounted) setInitializing(false);
+          });
+        } else {
+          setInitializing(false);
+        }
+      })
+      .catch((err) => {
+        console.warn('[auth] getSession a échoué:', err?.message ?? err);
+        if (mounted) setInitializing(false);
+      });
 
     const { data: sub } = supabase.auth.onAuthStateChange((_event, nextSession) => {
       if (!mounted) return;
@@ -86,6 +104,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     return () => {
       mounted = false;
+      clearTimeout(safety);
       sub.subscription.unsubscribe();
     };
   }, [loadProfile]);

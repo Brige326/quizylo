@@ -2,6 +2,7 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
+import { ActivityIndicator, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
@@ -17,7 +18,15 @@ function RootNavigator() {
     if (!initializing) SplashScreen.hideAsync();
   }, [initializing]);
 
-  if (initializing) return null;
+  // Pendant l'initialisation on affiche un vrai écran (fond + spinner),
+  // jamais un rendu vide qui apparaîtrait comme un écran noir.
+  if (initializing) {
+    return (
+      <View style={{ flex: 1, backgroundColor: Palette.background, alignItems: 'center', justifyContent: 'center' }}>
+        <ActivityIndicator color={Palette.primary} size="large" />
+      </View>
+    );
+  }
 
   return (
     <Stack
