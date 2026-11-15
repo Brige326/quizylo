@@ -6,13 +6,11 @@ import {
   Animated,
   FlatList,
   Keyboard,
-  LayoutAnimation,
   Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   TextInput,
-  UIManager,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -27,21 +25,6 @@ import { useAuth } from '@/contexts/auth';
 import { comingSoon } from '@/lib/ui';
 import { getTabBarHeight } from '@/lib/layoutStore';
 import { supabase } from '@/lib/supabase';
-
-if (
-  Platform.OS === 'android' &&
-  UIManager.setLayoutAnimationEnabledExperimental
-) {
-  UIManager.setLayoutAnimationEnabledExperimental(true);
-}
-
-const smooth = () => {
-  if (Platform.OS !== 'web') {
-    LayoutAnimation.configureNext(
-      LayoutAnimation.create(220, LayoutAnimation.Types.easeInEaseOut, LayoutAnimation.Properties.opacity),
-    );
-  }
-};
 
 type ChatMessage = { id: string; role: 'user' | 'assistant'; content: string };
 type Chip = { key: string; label: string; icon: keyof typeof Ionicons.glyphMap; color: string };
@@ -80,6 +63,8 @@ export default function AccueilScreen() {
   const listRef = useRef<FlatList<ChatMessage>>(null);
   const chatOpacity = useRef(new Animated.Value(0)).current;
   const kbPad = useRef(new Animated.Value(0)).current;
+  const heroOpacity = useRef(new Animated.Value(1)).current;
+  const chipsOpacity = useRef(new Animated.Value(1)).current;
 
   // On remonte la barre de (hauteur clavier − hauteur réelle de la TabBar),
   // avec la MÊME durée que le clavier, pour un mouvement « rattaché » sans saut.
@@ -108,9 +93,24 @@ export default function AccueilScreen() {
 
   const hasChat = messages.length > 0;
   const hasText = input.trim().length > 0;
-  // Au focus : on masque le texte du hero (la mascotte reste). En écrivant : on masque aussi les onglets.
-  const showHeroText = !hasChat && !focused;
-  const showChips = !hasChat && !hasText;
+
+  // Fondu discret du texte du hero au focus — la mascotte, elle, ne bouge jamais (bloc toujours monté).
+  useEffect(() => {
+    Animated.timing(heroOpacity, {
+      toValue: focused ? 0 : 1,
+      duration: 160,
+      useNativeDriver: true,
+    }).start();
+  }, [focused, heroOpacity]);
+
+  // Fondu discret des onglets dès qu'on écrit — leur espace reste réservé, donc la barre ne saute pas.
+  useEffect(() => {
+    Animated.timing(chipsOpacity, {
+      toValue: hasText ? 0 : 1,
+      duration: 160,
+      useNativeDriver: true,
+    }).start();
+  }, [hasText, chipsOpacity]);
 
   useEffect(() => {
     if (reset) {
@@ -187,7 +187,6 @@ export default function AccueilScreen() {
       return;
     }
     setInput('');
-    smooth();
     const userMsg: ChatMessage = { id: `u-${Date.now()}`, role: 'user', content: text };
     setMessages((m) => [...m, userMsg]);
     scrollToEnd();
@@ -251,13 +250,11 @@ export default function AccueilScreen() {
         ) : (
           <Pressable style={styles.welcome} onPress={() => Keyboard.dismiss()}>
             <Mascot size={76} />
-            {showHeroText ? (
-              <View style={styles.heroCard}>
-                <Text variant="title" center style={styles.heroTitle}>
-                  Quel est le sujet de ton prochain exam ?
-                </Text>
-              </View>
-            ) : null}
+            <Animated.View style={[styles.heroCard, { opacity: heroOpacity }]} pointerEvents="none">
+              <Text variant="title" center style={styles.heroTitle}>
+                Quel est le sujet de ton prochain exam ?
+              </Text>
+            </Animated.View>
           </Pressable>
         )}
 
@@ -269,21 +266,25 @@ export default function AccueilScreen() {
           </View>
         ) : null}
 
-        {/* Onglets d'actions — juste au-dessus de la barre ; disparaissent dès qu'on écrit */}
-        {showChips ? (
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
-            style={styles.chipsScroll}
-            contentContainerStyle={styles.chips}>
-            {ACTIONS.map((a) => (
-              <Tappable key={a.key} style={styles.chip} onPress={() => comingSoon(a.label)}>
-                <Ionicons name={a.icon} size={16} color={a.color} />
-                <Text variant="small">{a.label}</Text>
-              </Tappable>
-            ))}
-          </ScrollView>
+        {/* Onglets d'actions — toujours montés (espace réservé), fondu discret dès qu'on écrit */}
+        {!hasChat ? (
+          <Animated.View
+            style={{ opacity: chipsOpacity }}
+            pointerEvents={hasText ? 'none' : 'auto'}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+              style={styles.chipsScroll}
+              contentContainerStyle={styles.chips}>
+              {ACTIONS.map((a) => (
+                <Tappable key={a.key} style={styles.chip} onPress={() => comingSoon(a.label)}>
+                  <Ionicons name={a.icon} size={16} color={a.color} />
+                  <Text variant="small">{a.label}</Text>
+                </Tappable>
+              ))}
+            </ScrollView>
+          </Animated.View>
         ) : null}
 
         {/* Barre d'écriture */}
@@ -303,20 +304,9 @@ export default function AccueilScreen() {
               placeholder="Demande à Quizylo…"
               placeholderTextColor={Palette.textMuted}
               value={input}
-              onChangeText={(t) => {
-                const was = input.trim().length > 0;
-                const now = t.trim().length > 0;
-                if (was !== now) smooth();
-                setInput(t);
-              }}
-              onFocus={() => {
-                smooth();
-                setFocused(true);
-              }}
-              onBlur={() => {
-                smooth();
-                setFocused(false);
-              }}
+              onChangeText={setInput}
+              onFocus={() => setFocused(true)}
+              onBlur={() => setFocused(false)}
               onSubmitEditing={send}
               returnKeyType="send"
               multiline
