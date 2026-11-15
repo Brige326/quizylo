@@ -6,10 +6,12 @@ import {
   Animated,
   FlatList,
   KeyboardAvoidingView,
+  LayoutAnimation,
   Platform,
   ScrollView,
   StyleSheet,
   TextInput,
+  UIManager,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -23,6 +25,21 @@ import { Palette, Radius, Spacing, Type } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth';
 import { comingSoon } from '@/lib/ui';
 import { supabase } from '@/lib/supabase';
+
+if (
+  Platform.OS === 'android' &&
+  UIManager.setLayoutAnimationEnabledExperimental
+) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
+
+const smooth = () => {
+  if (Platform.OS !== 'web') {
+    LayoutAnimation.configureNext(
+      LayoutAnimation.create(220, LayoutAnimation.Types.easeInEaseOut, LayoutAnimation.Properties.opacity),
+    );
+  }
+};
 
 type ChatMessage = { id: string; role: 'user' | 'assistant'; content: string };
 type Chip = { key: string; label: string; icon: keyof typeof Ionicons.glyphMap; color: string };
@@ -62,6 +79,7 @@ export default function AccueilScreen() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
+  const [focused, setFocused] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
 
   const inputRef = useRef<ComponentRef<typeof TextInput>>(null);
@@ -70,12 +88,16 @@ export default function AccueilScreen() {
 
   const hasChat = messages.length > 0;
   const hasText = input.trim().length > 0;
+  // Au focus : on masque le texte du hero (la mascotte reste). En écrivant : on masque aussi les onglets.
+  const showHeroText = !hasChat && !focused;
+  const showChips = !hasChat && !hasText;
 
   useEffect(() => {
     if (reset) {
       setMessages([]);
       setConversationId(null);
       setInput('');
+      setFocused(false);
       chatOpacity.setValue(0);
     }
   }, [reset, chatOpacity]);
@@ -111,12 +133,13 @@ export default function AccueilScreen() {
   const scrollToEnd = () =>
     requestAnimationFrame(() => listRef.current?.scrollToEnd({ animated: true }));
 
-  const ensureConversation = async (): Promise<string | null> => {
+  const ensureConversation = async (firstText: string): Promise<string | null> => {
     if (conversationId) return conversationId;
     if (!userId) return null;
+    const title = firstText.slice(0, 48) + (firstText.length > 48 ? '…' : '');
     const { data } = await supabase
       .from('conversations')
-      .insert({ user_id: userId })
+      .insert({ user_id: userId, title })
       .select('id')
       .single();
     const id = data?.id ?? null;
@@ -144,11 +167,12 @@ export default function AccueilScreen() {
       return;
     }
     setInput('');
+    smooth();
     const userMsg: ChatMessage = { id: `u-${Date.now()}`, role: 'user', content: text };
     setMessages((m) => [...m, userMsg]);
     scrollToEnd();
 
-    const convId = await ensureConversation();
+    const convId = await ensureConversation(text);
     if (convId) {
       void supabase
         .from('messages')
@@ -175,6 +199,10 @@ export default function AccueilScreen() {
           role: 'assistant',
           content: reply,
         });
+        void supabase
+          .from('conversations')
+          .update({ updated_at: new Date().toISOString() })
+          .eq('id', convId);
       }
     } finally {
       setSending(false);
@@ -187,7 +215,7 @@ export default function AccueilScreen() {
 
       <KeyboardAvoidingView
         style={styles.kav}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={insets.bottom + 56}>
         {hasChat ? (
           <Animated.View style={[styles.flex, { opacity: chatOpacity }]}>
@@ -198,36 +226,37 @@ export default function AccueilScreen() {
               contentContainerStyle={styles.listContent}
               renderItem={({ item }) => <Bubble message={item} />}
               onContentSizeChange={scrollToEnd}
+              keyboardShouldPersistTaps="handled"
               showsVerticalScrollIndicator={false}
             />
           </Animated.View>
         ) : (
-          <ScrollView
-            style={styles.flex}
-            contentContainerStyle={styles.welcome}
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}>
+          <View style={styles.welcome}>
             <Mascot size={76} />
-            <View style={styles.heroCard}>
-              <Text variant="title" center style={styles.heroTitle}>
-                Quel est le sujet de ton prochain exam ?
-              </Text>
-            </View>
-            <View style={styles.subjects}>
-              {SUBJECTS.map((s) => (
-                <Tappable key={s.key} style={styles.subjectChip} onPress={() => comingSoon(s.label)}>
-                  <Ionicons name={s.icon} size={16} color={s.color} />
-                  <Text variant="small" style={{ fontWeight: '700' }}>
-                    {s.label}
+            {showHeroText ? (
+              <View style={styles.heroZone}>
+                <View style={styles.heroCard}>
+                  <Text variant="title" center style={styles.heroTitle}>
+                    Quel est le sujet de ton prochain exam ?
                   </Text>
+                </View>
+                <View style={styles.subjects}>
+                  {SUBJECTS.map((s) => (
+                    <Tappable key={s.key} style={styles.subjectChip} onPress={() => comingSoon(s.label)}>
+                      <Ionicons name={s.icon} size={16} color={s.color} />
+                      <Text variant="small" style={{ fontWeight: '700' }}>
+                        {s.label}
+                      </Text>
+                    </Tappable>
+                  ))}
+                </View>
+                <Tappable style={styles.seeAll} onPress={() => comingSoon('Tous les sujets')}>
+                  <Text variant="bodyStrong">Voir tous les sujets</Text>
+                  <Ionicons name="arrow-forward" size={16} color={Palette.text} />
                 </Tappable>
-              ))}
-            </View>
-            <Tappable style={styles.seeAll} onPress={() => comingSoon('Tous les sujets')}>
-              <Text variant="bodyStrong">Voir tous les sujets</Text>
-              <Ionicons name="arrow-forward" size={16} color={Palette.text} />
-            </Tappable>
-          </ScrollView>
+              </View>
+            ) : null}
+          </View>
         )}
 
         {sending ? (
@@ -238,22 +267,25 @@ export default function AccueilScreen() {
           </View>
         ) : null}
 
-        {/* Onglets d'actions — toujours visibles, juste au-dessus de la barre */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.chipsScroll}
-          contentContainerStyle={styles.chips}>
-          {ACTIONS.map((a) => (
-            <Tappable key={a.key} style={styles.chip} onPress={() => comingSoon(a.label)}>
-              <Ionicons name={a.icon} size={16} color={a.color} />
-              <Text variant="small">{a.label}</Text>
-            </Tappable>
-          ))}
-        </ScrollView>
+        {/* Onglets d'actions — juste au-dessus de la barre ; disparaissent dès qu'on écrit */}
+        {showChips ? (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            style={styles.chipsScroll}
+            contentContainerStyle={styles.chips}>
+            {ACTIONS.map((a) => (
+              <Tappable key={a.key} style={styles.chip} onPress={() => comingSoon(a.label)}>
+                <Ionicons name={a.icon} size={16} color={a.color} />
+                <Text variant="small">{a.label}</Text>
+              </Tappable>
+            ))}
+          </ScrollView>
+        ) : null}
 
         {/* Barre d'écriture */}
-        <View style={[styles.inputRow, { paddingBottom: Spacing.md }]}>
+        <View style={[styles.inputRow, { paddingBottom: Math.max(insets.bottom, Spacing.md) }]}>
           <Tappable
             style={styles.plus}
             onPress={() => comingSoon('Pièce jointe')}
@@ -269,7 +301,20 @@ export default function AccueilScreen() {
               placeholder="Demande à Quizylo…"
               placeholderTextColor={Palette.textMuted}
               value={input}
-              onChangeText={setInput}
+              onChangeText={(t) => {
+                const was = input.trim().length > 0;
+                const now = t.trim().length > 0;
+                if (was !== now) smooth();
+                setInput(t);
+              }}
+              onFocus={() => {
+                smooth();
+                setFocused(true);
+              }}
+              onBlur={() => {
+                smooth();
+                setFocused(false);
+              }}
               onSubmitEditing={send}
               returnKeyType="send"
               multiline
@@ -338,19 +383,18 @@ const styles = StyleSheet.create({
   kav: { flex: 1 },
   flex: { flex: 1 },
   welcome: {
-    flexGrow: 1,
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.xl,
     gap: Spacing.md,
   },
+  heroZone: { alignItems: 'center', gap: Spacing.md },
   heroCard: {
     backgroundColor: Palette.surfaceElevated,
     borderRadius: Radius.xl,
     paddingVertical: Spacing.lg,
     paddingHorizontal: Spacing.xl,
-    marginTop: -Spacing.md,
   },
   heroTitle: { fontSize: 22, lineHeight: 28 },
   subjects: {
@@ -358,7 +402,6 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     justifyContent: 'center',
     gap: Spacing.sm,
-    marginTop: Spacing.sm,
   },
   subjectChip: {
     flexDirection: 'row',
@@ -377,9 +420,13 @@ const styles = StyleSheet.create({
     borderRadius: Radius.pill,
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.md,
-    marginTop: Spacing.xs,
   },
-  listContent: { paddingHorizontal: Spacing.lg, paddingTop: Spacing.lg, paddingBottom: Spacing.sm, gap: Spacing.lg },
+  listContent: {
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.lg,
+    paddingBottom: Spacing.sm,
+    gap: Spacing.lg,
+  },
   userRow: { flexDirection: 'row', justifyContent: 'flex-end' },
   userBubble: {
     maxWidth: '82%',
