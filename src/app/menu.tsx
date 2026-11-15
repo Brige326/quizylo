@@ -257,28 +257,35 @@ function ConversationRow({
     </Pressable>
   );
   return (
-    <Swipeable renderRightActions={renderRightActions} overshootRight={false} friction={2}>
-      <View style={styles.convRow}>
-        <Tappable style={styles.convOpen} onPress={onOpen} haptic={false}>
-          <Ionicons name="chatbox-outline" size={22} color={Palette.purple} />
-          <Text variant="bodyStrong" style={{ flex: 1 }} numberOfLines={1}>
-            {label}
-          </Text>
-        </Tappable>
-      </View>
+    <Swipeable
+      renderRightActions={renderRightActions}
+      overshootRight={false}
+      friction={2}
+      containerStyle={styles.swipeContainer}
+      childrenContainerStyle={styles.swipeChild}>
+      <Tappable style={styles.convRow} onPress={onOpen} haptic={false}>
+        <Ionicons name="chatbox-outline" size={22} color={Palette.purple} />
+        <Text variant="bodyStrong" style={styles.convLabel} numberOfLines={1}>
+          {label}
+        </Text>
+      </Tappable>
     </Swipeable>
   );
 }
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
+  swipeContainer: { width: '100%' },
+  swipeChild: { width: '100%' },
   convRow: {
+    width: '100%',
     flexDirection: 'row',
     alignItems: 'center',
+    gap: Spacing.md,
     paddingVertical: Spacing.md,
     backgroundColor: Palette.background,
   },
-  convOpen: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
+  convLabel: { flex: 1 },
   swipeDelete: {
     width: 88,
     alignItems: 'center',
