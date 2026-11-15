@@ -9,6 +9,7 @@ import { Tappable } from '@/components/ui/Tappable';
 import { Text } from '@/components/ui/Text';
 import { Palette, Radius, Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth';
+import { notifyConversationDeleted, openConversation, startNewChat } from '@/lib/chatNav';
 import { supabase } from '@/lib/supabase';
 
 type Conversation = { id: string; title: string };
@@ -59,8 +60,35 @@ export default function MenuScreen() {
   };
 
   const onNewChat = () => {
-    // Ramène à l'espace conversation de l'accueil, vierge (comme écrire depuis l'accueil).
-    router.navigate({ pathname: '/(tabs)', params: { reset: String(Date.now()) } });
+    // Accueil vierge, puis on atterrit sur l'onglet Accueil et on ferme le menu.
+    startNewChat();
+    router.navigate('/(tabs)');
+  };
+
+  const onOpenConversation = (id: string) => {
+    // Rouvre la discussion à l'identique, atterrit sur l'Accueil et ferme le menu.
+    openConversation(id);
+    router.navigate('/(tabs)');
+  };
+
+  const onDeleteConversation = (id: string, title: string) => {
+    Alert.alert(
+      'Supprimer la discussion',
+      `« ${title || 'Discussion'} » sera définitivement supprimée.`,
+      [
+        { text: 'Annuler', style: 'cancel' },
+        {
+          text: 'Supprimer',
+          style: 'destructive',
+          onPress: async () => {
+            setConversations((prev) => prev.filter((c) => c.id !== id)); // retrait immédiat
+            notifyConversationDeleted(id); // l'accueil se remet à zéro si elle était ouverte
+            await supabase.from('messages').delete().eq('conversation_id', id);
+            await supabase.from('conversations').delete().eq('id', id);
+          },
+        },
+      ],
+    );
   };
 
   return (
@@ -114,14 +142,11 @@ export default function MenuScreen() {
           </Text>
         ) : (
           conversations.map((c) => (
-            <MenuRow
+            <ConversationRow
               key={c.id}
-              icon="chatbox-outline"
-              iconColor={Palette.purple}
-              label={c.title}
-              onPress={() =>
-                router.navigate({ pathname: '/(tabs)', params: { conversationId: c.id } })
-              }
+              label={c.title || 'Discussion'}
+              onOpen={() => onOpenConversation(c.id)}
+              onDelete={() => onDeleteConversation(c.id, c.title)}
             />
           ))
         )}
@@ -176,8 +201,38 @@ function MenuRow({
   );
 }
 
+function ConversationRow({
+  label,
+  onOpen,
+  onDelete,
+}: {
+  label: string;
+  onOpen: () => void;
+  onDelete: () => void;
+}) {
+  return (
+    <View style={styles.convRow}>
+      <Tappable style={styles.convOpen} onPress={onOpen} haptic={false}>
+        <Ionicons name="chatbox-outline" size={22} color={Palette.purple} />
+        <Text variant="bodyStrong" style={{ flex: 1 }} numberOfLines={1}>
+          {label}
+        </Text>
+      </Tappable>
+      <Tappable
+        onPress={onDelete}
+        hitSlop={10}
+        scaleTo={0.85}
+        accessibilityLabel="Supprimer la discussion">
+        <Ionicons name="trash-outline" size={19} color={Palette.textMuted} />
+      </Tappable>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   flex: { flex: 1 },
+  convRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, paddingVertical: Spacing.md },
+  convOpen: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
   wrap: { flex: 1, flexDirection: 'row' },
   panel: {
     width: '86%',

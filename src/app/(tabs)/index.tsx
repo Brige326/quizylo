@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { type ComponentRef, useEffect, useRef, useState } from 'react';
+import { useRouter } from 'expo-router';
+import { type ComponentRef, useCallback, useEffect, useRef, useState } from 'react';
 import {
   Alert,
   Animated,
@@ -25,6 +25,7 @@ import { Palette, Radius, Spacing, Type } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth';
 import { comingSoon } from '@/lib/ui';
 import { getTabBarHeight, subscribeTabBarHeight } from '@/lib/layoutStore';
+import { subscribeChatNav } from '@/lib/chatNav';
 import { supabase } from '@/lib/supabase';
 
 type ChatMessage = { id: string; role: 'user' | 'assistant'; content: string };
@@ -48,10 +49,6 @@ export default function AccueilScreen() {
   const { profile, session, exitGuest } = useAuth();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { reset, conversationId: convParam } = useLocalSearchParams<{
-    reset?: string;
-    conversationId?: string;
-  }>();
   const userId = session?.user?.id;
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -98,37 +95,54 @@ export default function AccueilScreen() {
     }).start();
   }, [hasText, chipsOpacity]);
 
-  useEffect(() => {
-    if (reset) {
-      setMessages([]);
-      setConversationId(null);
+  // Nouveau chat : on revient à l'accueil vierge, exactement comme au tout début.
+  const resetChat = useCallback(() => {
+    setMessages([]);
+    setConversationId(null);
+    setInput('');
+    setFocused(false);
+    chatOpacity.setValue(0);
+  }, [chatOpacity]);
+
+  // Ouvrir une discussion précédente : on recharge SES messages, à l'identique.
+  const loadConversation = useCallback(
+    async (id: string) => {
+      if (!userId) return;
       setInput('');
       setFocused(false);
-      chatOpacity.setValue(0);
-    }
-  }, [reset, chatOpacity]);
-
-  useEffect(() => {
-    if (!convParam || !userId) return;
-    let active = true;
-    (async () => {
       const { data } = await supabase
         .from('messages')
         .select('id, role, content')
-        .eq('conversation_id', convParam)
+        .eq('conversation_id', id)
         .order('created_at', { ascending: true });
-      if (!active || !data) return;
-      setConversationId(convParam);
+      if (!data) return;
+      setConversationId(id);
       setMessages(
         data
           .filter((m) => m.role === 'user' || m.role === 'assistant')
           .map((m) => ({ id: m.id, role: m.role as 'user' | 'assistant', content: m.content })),
       );
-    })();
-    return () => {
-      active = false;
-    };
-  }, [convParam, userId]);
+    },
+    [userId],
+  );
+
+  // Référence vivante de la discussion ouverte (pour réagir à une suppression sans se réabonner).
+  const convIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    convIdRef.current = conversationId;
+  }, [conversationId]);
+
+  // Canal direct depuis le menu : « Nouveau chat » → accueil vierge ; une discussion → on la rouvre ;
+  // une discussion supprimée alors qu'elle est ouverte → on revient à l'accueil vierge.
+  useEffect(
+    () =>
+      subscribeChatNav((a) => {
+        if (a.type === 'new') resetChat();
+        else if (a.type === 'open') loadConversation(a.id);
+        else if (a.type === 'deleted' && convIdRef.current === a.id) resetChat();
+      }),
+    [resetChat, loadConversation],
+  );
 
   useEffect(() => {
     if (hasChat) {

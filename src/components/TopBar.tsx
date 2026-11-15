@@ -17,7 +17,7 @@ function MenuGlyph() {
   return (
     <View style={styles.menu}>
       <View style={[styles.menuBar, { width: 30 }]} />
-      <View style={[styles.menuBar, { width: 15, marginLeft: 6, backgroundColor: Palette.purple }]} />
+      <View style={[styles.menuBar, { width: 15, marginLeft: 6 }]} />
       <View style={[styles.menuBar, { width: 24, marginLeft: 2 }]} />
     </View>
   );
