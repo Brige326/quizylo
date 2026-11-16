@@ -468,8 +468,15 @@ export default function LeconScreen() {
         </View>
       </View>
 
+      {/* TEMP DEBUG */}
+      <View style={{ backgroundColor: '#1565C0', paddingVertical: 6, paddingHorizontal: 12 }}>
+        <Text style={{ color: '#FFFFFF', fontSize: 12 }}>
+          {`DBG load=${String(loading)} tab=${tab} blocs=${blocks.length} bar=${!loading && tab === 'notes' && !reordering ? 'OUI' : 'non'}`}
+        </Text>
+      </View>
+
       {/* Bascule Notes / Ressources */}
-      <View style={styles.tabs}>
+      <View style={[styles.tabs, { backgroundColor: '#C62828' }]}>
           <Tappable
             style={[styles.tab, tab === 'notes' && { backgroundColor: Palette.primarySurface }]}
             onPress={() => setTab('notes')}
@@ -937,7 +944,7 @@ const styles = StyleSheet.create({
     paddingTop: Spacing.sm,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: Palette.border,
-    backgroundColor: Palette.background,
+    backgroundColor: '#AD1457',
   },
   tool: {
     flex: 1,
