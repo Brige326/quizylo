@@ -31,6 +31,7 @@ export type EventItem = {
   all_day: boolean;
   reminder_minutes: number | null;
   notif_id: string | null;
+  recurrence: string; // 'none' | 'daily' | 'weekly' | 'monthly'
   created_at: string;
   updated_at: string;
 };
@@ -63,6 +64,7 @@ export async function createEvent(params: {
   description?: string | null;
   reminderMinutes?: number | null;
   notifId?: string | null;
+  recurrence?: string;
 }): Promise<EventItem> {
   const { data, error } = await supabase
     .from('events')
@@ -76,6 +78,7 @@ export async function createEvent(params: {
       description: params.description ?? null,
       reminder_minutes: params.reminderMinutes ?? null,
       notif_id: params.notifId ?? null,
+      recurrence: params.recurrence ?? 'none',
     })
     .select('*')
     .single();
@@ -94,6 +97,7 @@ export async function updateEvent(
     description?: string | null;
     reminderMinutes?: number | null;
     notifId?: string | null;
+    recurrence?: string;
   },
 ): Promise<void> {
   const { error } = await supabase
@@ -107,10 +111,23 @@ export async function updateEvent(
       description: params.description ?? null,
       reminder_minutes: params.reminderMinutes ?? null,
       notif_id: params.notifId ?? null,
+      recurrence: params.recurrence ?? 'none',
       updated_at: new Date().toISOString(),
     })
     .eq('id', id);
   if (error) throw error;
+}
+
+/** Tous les événements récurrents de l'utilisateur (pour générer les occurrences côté app). */
+export async function listRecurringEvents(userId: string): Promise<EventItem[]> {
+  const { data, error } = await supabase
+    .from('events')
+    .select('*')
+    .eq('user_id', userId)
+    .neq('recurrence', 'none')
+    .order('starts_at', { ascending: true });
+  if (error) throw error;
+  return (data ?? []) as EventItem[];
 }
 
 export async function deleteEvent(id: string): Promise<void> {

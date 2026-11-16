@@ -35,6 +35,7 @@ import {
   deleteEvent,
   deleteTask,
   listEventsBetween,
+  listRecurringEvents,
   listTasksBetween,
   setTaskDone,
   updateEvent,
@@ -61,6 +62,57 @@ function dayAt(date: Date, h: number): Date {
   const d = new Date(date);
   d.setHours(h, 0, 0, 0);
   return d;
+}
+
+const RECURRENCES: { key: string; label: string }[] = [
+  { key: 'none', label: 'Jamais' },
+  { key: 'daily', label: 'Chaque jour' },
+  { key: 'weekly', label: 'Chaque semaine' },
+  { key: 'monthly', label: 'Chaque mois' },
+];
+function recurrenceLabel(key: string): string {
+  return RECURRENCES.find((r) => r.key === key)?.label ?? 'Jamais';
+}
+// k-ième occurrence d'un événement récurrent (conserve l'heure de la base).
+function occStartOf(S: Date, r: string, k: number): Date {
+  if (r === 'weekly') {
+    const d = new Date(S);
+    d.setDate(d.getDate() + k * 7);
+    return d;
+  }
+  if (r === 'monthly') {
+    return new Date(S.getFullYear(), S.getMonth() + k, S.getDate(), S.getHours(), S.getMinutes(), 0, 0);
+  }
+  const d = new Date(S);
+  d.setDate(d.getDate() + k);
+  return d;
+}
+// Occurrences d'un événement récurrent dont le début tombe dans [start, end).
+function expandEvent(e: EventItem, start: Date, end: Date): EventItem[] {
+  const S = new Date(e.starts_at);
+  const dur = e.ends_at ? new Date(e.ends_at).getTime() - S.getTime() : 0;
+  const out: EventItem[] = [];
+  for (let k = 0; k < 1000; k++) {
+    const o = occStartOf(S, e.recurrence, k);
+    if (o.getTime() >= end.getTime()) break;
+    if (o.getTime() >= start.getTime()) {
+      out.push({
+        ...e,
+        starts_at: o.toISOString(),
+        ends_at: dur ? new Date(o.getTime() + dur).toISOString() : null,
+      });
+    }
+  }
+  return out;
+}
+// Prochaine occurrence (début) >= maintenant, pour planifier le rappel d'un événement récurrent.
+function nextOccurrence(S: Date, r: string): Date {
+  const now = Date.now();
+  for (let k = 0; k < 1000; k++) {
+    const o = occStartOf(S, r, k);
+    if (o.getTime() >= now) return o;
+  }
+  return S;
 }
 
 function startOfDay(d: Date): Date {
@@ -170,10 +222,15 @@ export default function PlanningScreen() {
   const [showStart, setShowStart] = useState(false);
   const [showEnd, setShowEnd] = useState(false);
   const [reminderMin, setReminderMin] = useState<number | null>(null);
+  const [recurrence, setRecurrence] = useState('none');
   const [saving, setSaving] = useState(false);
 
-  // Feuille de choix du rappel ('event' | 'task')
+  // Feuilles de choix
   const [reminderSheetFor, setReminderSheetFor] = useState<'event' | 'task' | null>(null);
+  const [recurrenceSheetOpen, setRecurrenceSheetOpen] = useState(false);
+
+  // Événements récurrents (bruts) pour générer les occurrences.
+  const [recurringEvents, setRecurringEvents] = useState<EventItem[]>([]);
 
   // Bornes de la plage à charger selon la vue.
   const range = useMemo(() => {
@@ -193,11 +250,14 @@ export default function PlanningScreen() {
     }
     setLoading(true);
     try {
-      const [ev, tk] = await Promise.all([
+      const [ev, rec, tk] = await Promise.all([
         listEventsBetween(userId, range.start.toISOString(), range.end.toISOString()),
+        listRecurringEvents(userId),
         listTasksBetween(userId, ymd(range.start), ymd(range.end)),
       ]);
-      setEvents(ev);
+      // Dans la plage, on ne garde que les non-récurrents ; les récurrents sont générés depuis `rec`.
+      setEvents(ev.filter((e) => e.recurrence === 'none'));
+      setRecurringEvents(rec);
       setTasks(tk);
     } catch {
       // rien d'inventé
@@ -210,16 +270,27 @@ export default function PlanningScreen() {
     load();
   }, [load]);
 
+  // Tous les événements affichés = non-récurrents dans la plage + occurrences générées.
+  const allEvents = useMemo(() => {
+    const out = [...events];
+    for (const e of recurringEvents) out.push(...expandEvent(e, range.start, range.end));
+    return out;
+  }, [events, recurringEvents, range.start, range.end]);
+
   const byDay = useMemo(() => {
     const m = new Map<string, EventItem[]>();
-    for (const e of events) {
+    for (const e of allEvents) {
       const k = dateKey(new Date(e.starts_at));
       const arr = m.get(k);
       if (arr) arr.push(e);
       else m.set(k, [e]);
     }
+    // tri par heure dans chaque jour
+    for (const arr of m.values()) {
+      arr.sort((a, b) => Number(b.all_day) - Number(a.all_day) || a.starts_at.localeCompare(b.starts_at));
+    }
     return m;
-  }, [events]);
+  }, [allEvents]);
 
   // Tâches regroupées par échéance (clé 'YYYY-MM-DD').
   const tasksByDay = useMemo(() => {
@@ -276,13 +347,16 @@ export default function PlanningScreen() {
     setStartTime(nextHour());
     setEndTime(null);
     setReminderMin(null);
+    setRecurrence('none');
     setShowDate(false);
     setShowStart(false);
     setShowEnd(false);
     setFormOpen(true);
   };
 
-  const openEdit = (e: EventItem) => {
+  const openEdit = (occ: EventItem) => {
+    // Pour un événement récurrent, on édite la SÉRIE (sa définition de base), pas l'occurrence affichée.
+    const e = occ.recurrence !== 'none' ? recurringEvents.find((x) => x.id === occ.id) ?? occ : occ;
     const s = new Date(e.starts_at);
     setEditing(e);
     setTitle(e.title);
@@ -293,6 +367,7 @@ export default function PlanningScreen() {
     setStartTime(s);
     setEndTime(e.ends_at ? new Date(e.ends_at) : null);
     setReminderMin(e.reminder_minutes ?? null);
+    setRecurrence(e.recurrence ?? 'none');
     setShowDate(false);
     setShowStart(false);
     setShowEnd(false);
@@ -316,7 +391,9 @@ export default function PlanningScreen() {
     if (editing?.notif_id) await cancelReminder(editing.notif_id);
     let notifId: string | null = null;
     if (reminderMin != null) {
-      const reference = allDay ? dayAt(formDate, 9) : start;
+      const refBase = allDay ? dayAt(formDate, 9) : start;
+      // Pour un événement récurrent, le rappel vise la prochaine occurrence à venir.
+      const reference = recurrence !== 'none' ? nextOccurrence(refBase, recurrence) : refBase;
       const trigger = new Date(reference.getTime() - reminderMin * 60000);
       notifId = await scheduleReminder(trigger, title.trim(), 'Rappel Quizylo');
     }
@@ -329,6 +406,7 @@ export default function PlanningScreen() {
       description: description.trim() || null,
       reminderMinutes: reminderMin,
       notifId,
+      recurrence,
     };
     try {
       if (editing) await updateEvent(editing.id, payload);
@@ -701,6 +779,14 @@ export default function PlanningScreen() {
                   </Tappable>
                 </Row>
 
+                <Row label="Répéter">
+                  <Tappable onPress={() => setRecurrenceSheetOpen(true)} hitSlop={6}>
+                    <Text variant="bodyStrong" color={recurrence !== 'none' ? Palette.primary : Palette.textSecondary}>
+                      {recurrenceLabel(recurrence)}
+                    </Text>
+                  </Tappable>
+                </Row>
+
                 <TextInput
                   style={styles.descInput}
                   placeholder="Note (facultatif)"
@@ -888,6 +974,37 @@ export default function PlanningScreen() {
           </Pressable>
         </Pressable>
       </Modal>
+
+      {/* Feuille : choix de la récurrence */}
+      <Modal
+        visible={recurrenceSheetOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setRecurrenceSheetOpen(false)}>
+        <Pressable style={styles.bottomBackdrop} onPress={() => setRecurrenceSheetOpen(false)}>
+          <Pressable style={[styles.addSheet, { paddingBottom: insets.bottom + Spacing.md }]} onPress={() => {}}>
+            <View style={styles.sheetHandle} />
+            <Text variant="heading" style={{ marginBottom: Spacing.sm }}>
+              Répéter
+            </Text>
+            {RECURRENCES.map((r, i) => (
+              <Tappable
+                key={r.key}
+                style={[styles.addRow, i === RECURRENCES.length - 1 && { borderBottomWidth: 0 }]}
+                onPress={() => {
+                  setRecurrence(r.key);
+                  setRecurrenceSheetOpen(false);
+                }}
+                haptic={false}>
+                <Text variant="bodyStrong" style={{ flex: 1 }}>
+                  {r.label}
+                </Text>
+                {recurrence === r.key ? <Ionicons name="checkmark" size={20} color={Palette.primary} /> : null}
+              </Tappable>
+            ))}
+          </Pressable>
+        </Pressable>
+      </Modal>
     </Screen>
   );
 }
@@ -926,6 +1043,9 @@ function EventRow({ item, onPress }: { item: EventItem; onPress: () => void }) {
           {item.description ? ' · …' : ''}
         </Text>
       </View>
+      {item.recurrence !== 'none' ? (
+        <Ionicons name="repeat" size={16} color={Palette.textMuted} />
+      ) : null}
       <Ionicons name="chevron-forward" size={18} color={Palette.textMuted} />
     </Tappable>
   );
@@ -993,7 +1113,7 @@ function DayView({
   return (
     <ScrollView contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}>
       {events.map((e) => (
-        <EventRow key={e.id} item={e} onPress={() => onPress(e)} />
+        <EventRow key={`${e.id}-${e.starts_at}`} item={e} onPress={() => onPress(e)} />
       ))}
       {tasks.length > 0 ? (
         <>
@@ -1054,7 +1174,7 @@ function WeekView({
                 {evs.map((e) => {
                   const cat = categoryOf(e.category);
                   return (
-                    <Tappable key={e.id} style={styles.weekEvent} onPress={() => onPressEvent(e)} haptic={false}>
+                    <Tappable key={`${e.id}-${e.starts_at}`} style={styles.weekEvent} onPress={() => onPressEvent(e)} haptic={false}>
                       <View style={[styles.weekDot, { backgroundColor: cat.color }]} />
                       <Text variant="small" color={Palette.textSecondary} style={{ width: 46 }}>
                         {e.all_day ? 'Jour' : fmtTime(e.starts_at)}
