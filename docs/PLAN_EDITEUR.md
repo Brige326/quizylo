@@ -23,7 +23,12 @@ Alternatives écartées : blocs natifs (plafond : pas de mise en forme en ligne,
 tableaux/maths) ; `react-native-pell-rich-editor` (ancien, cul-de-sac) ; Lexical-RN
 (immature).
 
-> Statut : **en attente de validation par test appareil** (prototype Séance 2).
+> Statut : **moteur auto-validé**. Le bundle TipTap 3.11 (celui qui tourne dans la
+> WebView) a été rendu et piloté dans un navigateur headless : titres, gras/italique/
+> barré, listes, citation, saisie et mise en forme OK (0 erreur). Reste à confirmer
+> sur appareil le pont React Native ↔ WebView et le clavier (non testables hors iOS/
+> simulateur) — ce sera vérifié au moment de l'intégration réelle, pas en te renvoyant
+> des tests manuels.
 
 ## Architecture cible
 
@@ -118,3 +123,7 @@ début de chaque séance**, pas d'avance.
 - **S3 — Modèle de données** : migration `add_lesson_content_and_attachments` appliquée
   (colonne `content`, table `lesson_attachments` + RLS). Plan de migration blocs→content
   défini.
+- **S4 — Validation moteur + convertisseur** : moteur TipTap auto-testé en navigateur
+  (rendu + formatage OK). `src/lib/lessonContent.ts` : convertisseur pur
+  `blocksToDoc()` (titres, texte multi-lignes→hardBreak, couleur→mark, image, pdf→
+  attachment, police, cas vides). **13 tests unitaires au vert**, `tsc` = 0.
