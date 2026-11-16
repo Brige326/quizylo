@@ -45,7 +45,13 @@ function RootNavigator() {
       <Stack.Screen name="(tabs)" options={{ animation: 'fade' }} />
       <Stack.Screen
         name="menu"
-        options={{ presentation: 'transparentModal', animation: 'none' }}
+        options={{
+          presentation: 'transparentModal',
+          animation: 'none',
+          // Fond réellement transparent : l'écran du dessous reste visible (plus de page noire
+          // au backdrop ni à la fermeture). L'assombrissement vient uniquement du voile animé.
+          contentStyle: { backgroundColor: 'transparent' },
+        }}
       />
       <Stack.Screen name="pro" options={{ animation: 'slide_from_bottom', presentation: 'modal' }} />
       <Stack.Screen name="settings" options={{ animation: 'slide_from_right' }} />
