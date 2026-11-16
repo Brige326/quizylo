@@ -29,16 +29,44 @@ import { useAuth } from '@/contexts/auth';
 import {
   createNote,
   deleteDocument,
+  deleteGeneratedContent,
+  generateContent,
   listChapters,
   listDocuments,
+  listGeneratedContent,
   moveDocument,
   renameDocument,
+  saveGeneratedContent,
   signedUrlFor,
   updateNoteContent,
   uploadFileDocument,
   type Chapter,
   type DocItem,
+  type GenItem,
+  type GenKind,
 } from '@/lib/courses';
+
+const GEN_KINDS: { kind: GenKind; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
+  { kind: 'quiz', label: 'Quiz', icon: 'help-circle-outline' },
+  { kind: 'examen', label: 'Examen blanc', icon: 'school-outline' },
+  { kind: 'fiche', label: 'Fiche de révision', icon: 'reader-outline' },
+  { kind: 'flashcards', label: 'Flashcards', icon: 'albums-outline' },
+  { kind: 'resume', label: 'Résumé', icon: 'document-text-outline' },
+];
+const GEN_ICON: Record<GenKind, keyof typeof Ionicons.glyphMap> = {
+  quiz: 'help-circle',
+  examen: 'school',
+  fiche: 'reader',
+  flashcards: 'albums',
+  resume: 'document-text',
+};
+const GEN_LABEL: Record<GenKind, string> = {
+  quiz: 'Quiz',
+  examen: 'Examen blanc',
+  fiche: 'Fiche',
+  flashcards: 'Flashcards',
+  resume: 'Résumé',
+};
 
 const KIND_ICON: Record<DocItem['kind'], keyof typeof Ionicons.glyphMap> = {
   pdf: 'document-text',
@@ -92,6 +120,15 @@ export default function ChapitreDocumentsScreen() {
   const [moveDoc, setMoveDoc] = useState<DocItem | null>(null);
   const [moveChapters, setMoveChapters] = useState<Chapter[]>([]);
 
+  // Onglets Documents / Révisions (contenus générés)
+  const [tab, setTab] = useState<'docs' | 'revs'>('docs');
+  const [revs, setRevs] = useState<GenItem[]>([]);
+  const [revsLoading, setRevsLoading] = useState(true);
+  const [genKindOpen, setGenKindOpen] = useState(false);
+  const [genKind, setGenKind] = useState<GenKind | null>(null);
+  const [genContext, setGenContext] = useState('');
+  const [generating, setGenerating] = useState(false);
+
   const load = useCallback(async () => {
     if (!chapterId) return;
     try {
@@ -103,9 +140,21 @@ export default function ChapitreDocumentsScreen() {
     }
   }, [chapterId]);
 
+  const loadRevs = useCallback(async () => {
+    if (!chapterId) return;
+    try {
+      setRevs(await listGeneratedContent(chapterId));
+    } catch {
+      // rien d'inventé
+    } finally {
+      setRevsLoading(false);
+    }
+  }, [chapterId]);
+
   useEffect(() => {
     load();
-  }, [load]);
+    loadRevs();
+  }, [load, loadRevs]);
 
   const back = () => {
     if (router.canGoBack()) router.back();
@@ -328,6 +377,76 @@ export default function ChapitreDocumentsScreen() {
     }
   };
 
+  /* ---------- Génération IA ---------- */
+
+  const pickGenKind = (k: GenKind) => {
+    setGenKindOpen(false);
+    setGenKind(k);
+    // Sujet par défaut : le nom du chapitre. L'utilisateur peut coller/éditer son cours.
+    setGenContext(chapterName);
+  };
+
+  const closeGen = () => {
+    if (!generating) setGenKind(null);
+  };
+
+  const runGenerate = async () => {
+    const kind = genKind;
+    const ctx = genContext.trim();
+    if (!kind || !userId || !ctx) return;
+    setGenerating(true);
+    try {
+      const res = await generateContent(kind, ctx);
+      if (!res.configured) {
+        setGenerating(false);
+        Alert.alert(
+          'Génération IA à activer',
+          "La génération par IA n'est pas encore activée sur ton compte. On la branche très bientôt — le reste de Mes cours fonctionne déjà.",
+        );
+        return;
+      }
+      if (res.error || !res.payload) {
+        setGenerating(false);
+        Alert.alert('Oups', 'La génération a échoué. Réessaie dans un instant.');
+        return;
+      }
+      const saved = await saveGeneratedContent({
+        userId,
+        subjectId,
+        chapterId,
+        kind,
+        title: res.title ?? GEN_LABEL[kind],
+        payload: res.payload,
+      });
+      setGenKind(null);
+      setGenerating(false);
+      await loadRevs();
+      router.push({ pathname: '/revision/[id]', params: { id: saved.id } });
+    } catch {
+      setGenerating(false);
+      Alert.alert('Oups', 'La génération a échoué. Réessaie dans un instant.');
+    }
+  };
+
+  const onRevOptions = (g: GenItem) => {
+    Alert.alert(g.title, GEN_LABEL[g.kind], [
+      { text: 'Ouvrir', onPress: () => router.push({ pathname: '/revision/[id]', params: { id: g.id } }) },
+      {
+        text: 'Supprimer',
+        style: 'destructive',
+        onPress: async () => {
+          setRevs((prev) => prev.filter((x) => x.id !== g.id));
+          try {
+            await deleteGeneratedContent(g.id);
+          } catch {
+            loadRevs();
+          }
+        },
+      },
+      { text: 'Annuler', style: 'cancel' },
+    ]);
+  };
+
   return (
     <Screen>
       <View style={[styles.header, { paddingTop: insets.top + Spacing.xs }]}>
@@ -342,13 +461,60 @@ export default function ChapitreDocumentsScreen() {
         </View>
         <Tappable
           style={[styles.addBtn, { backgroundColor: color }]}
-          onPress={() => setAddOpen(true)}
-          accessibilityLabel="Ajouter un document">
+          onPress={() => (tab === 'docs' ? setAddOpen(true) : setGenKindOpen(true))}
+          accessibilityLabel={tab === 'docs' ? 'Ajouter un document' : 'Générer un contenu'}>
           <Ionicons name="add" size={24} color="#06130C" />
         </Tappable>
       </View>
 
-      {loading ? (
+      {/* Onglets Documents / Révisions */}
+      <View style={styles.segment}>
+        <SegBtn label="Documents" active={tab === 'docs'} color={color} onPress={() => setTab('docs')} />
+        <SegBtn label="Révisions" active={tab === 'revs'} color={color} onPress={() => setTab('revs')} />
+      </View>
+
+      {tab === 'revs' ? (
+        revsLoading ? (
+          <View style={styles.center}>
+            <ActivityIndicator color={color} />
+          </View>
+        ) : revs.length === 0 ? (
+          <EmptyState
+            icon="sparkles-outline"
+            title="Aucune révision"
+            subtitle="Génère un quiz, une fiche, des flashcards, un résumé ou un examen blanc à partir de ce chapitre.">
+            <Button label="Générer un contenu" onPress={() => setGenKindOpen(true)} />
+          </EmptyState>
+        ) : (
+          <FlatList
+            data={revs}
+            keyExtractor={(g) => g.id}
+            contentContainerStyle={styles.list}
+            showsVerticalScrollIndicator={false}
+            renderItem={({ item }) => (
+              <Tappable
+                style={styles.row}
+                onPress={() => router.push({ pathname: '/revision/[id]', params: { id: item.id } })}
+                haptic={false}>
+                <View style={[styles.docIcon, { backgroundColor: color + '22' }]}>
+                  <Ionicons name={GEN_ICON[item.kind]} size={22} color={color} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text variant="bodyStrong" numberOfLines={1}>
+                    {item.title}
+                  </Text>
+                  <Text variant="small" color={Palette.textMuted}>
+                    {GEN_LABEL[item.kind]}
+                  </Text>
+                </View>
+                <Pressable hitSlop={10} onPress={() => onRevOptions(item)} accessibilityLabel="Options">
+                  <Ionicons name="ellipsis-horizontal" size={20} color={Palette.textMuted} />
+                </Pressable>
+              </Tappable>
+            )}
+          />
+        )
+      ) : loading ? (
         <View style={styles.center}>
           <ActivityIndicator color={color} />
         </View>
@@ -396,6 +562,75 @@ export default function ChapitreDocumentsScreen() {
           </View>
         </View>
       ) : null}
+
+      {generating ? (
+        <View style={styles.busyOverlay}>
+          <View style={styles.busyCard}>
+            <ActivityIndicator color={Palette.primary} />
+            <Text variant="small" color={Palette.textSecondary}>
+              Génération en cours…
+            </Text>
+          </View>
+        </View>
+      ) : null}
+
+      {/* Feuille : choix du type de contenu à générer */}
+      <Modal visible={genKindOpen} transparent animationType="fade" onRequestClose={() => setGenKindOpen(false)}>
+        <Pressable style={styles.backdrop} onPress={() => setGenKindOpen(false)}>
+          <Pressable style={[styles.addSheet, { paddingBottom: insets.bottom + Spacing.md }]} onPress={() => {}}>
+            <View style={styles.sheetHandle} />
+            <Text variant="heading" style={{ marginBottom: Spacing.sm }}>
+              Générer…
+            </Text>
+            {GEN_KINDS.map((g, i) => (
+              <Tappable
+                key={g.kind}
+                style={[styles.addRow, i === GEN_KINDS.length - 1 && { borderBottomWidth: 0 }]}
+                onPress={() => pickGenKind(g.kind)}
+                haptic={false}>
+                <View style={[styles.docIcon, { backgroundColor: color + '22' }]}>
+                  <Ionicons name={g.icon} size={20} color={color} />
+                </View>
+                <Text variant="bodyStrong" style={{ flex: 1 }}>
+                  {g.label}
+                </Text>
+                <Ionicons name="chevron-forward" size={18} color={Palette.textMuted} />
+              </Tappable>
+            ))}
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* Modale : contexte de génération */}
+      <Modal visible={genKind !== null} transparent animationType="fade" onRequestClose={closeGen}>
+        <Pressable style={styles.centerBackdrop} onPress={closeGen}>
+          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+            <Pressable style={styles.sheet} onPress={() => {}}>
+              <Text variant="heading">{genKind ? GEN_LABEL[genKind] : ''}</Text>
+              <Text variant="small" color={Palette.textSecondary}>
+                Sur quel sujet ? Tu peux coller ton cours ou préciser le thème.
+              </Text>
+              <TextInput
+                style={styles.genInput}
+                placeholder="Ex. Les probabilités : définitions, formules, exemples…"
+                placeholderTextColor={Palette.textMuted}
+                value={genContext}
+                onChangeText={setGenContext}
+                multiline
+                textAlignVertical="top"
+              />
+              <View style={styles.modalActions}>
+                <View style={{ flex: 1 }}>
+                  <Button label="Annuler" variant="ghost" onPress={closeGen} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Button label="Générer" onPress={runGenerate} disabled={!genContext.trim() || generating} />
+                </View>
+              </View>
+            </Pressable>
+          </KeyboardAvoidingView>
+        </Pressable>
+      </Modal>
 
       {/* Feuille d'ajout */}
       <Modal visible={addOpen} transparent animationType="fade" onRequestClose={() => setAddOpen(false)}>
@@ -541,6 +776,29 @@ function AddRow({
   );
 }
 
+function SegBtn({
+  label,
+  active,
+  color,
+  onPress,
+}: {
+  label: string;
+  active: boolean;
+  color: string;
+  onPress: () => void;
+}) {
+  return (
+    <Tappable
+      style={[styles.segBtn, active && { backgroundColor: color + '22' }]}
+      onPress={onPress}
+      haptic={false}>
+      <Text variant="bodyStrong" color={active ? color : Palette.textSecondary}>
+        {label}
+      </Text>
+    </Tappable>
+  );
+}
+
 const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
@@ -548,6 +806,29 @@ const styles = StyleSheet.create({
     gap: Spacing.md,
     paddingHorizontal: Spacing.lg,
     paddingBottom: Spacing.sm,
+  },
+  segment: {
+    flexDirection: 'row',
+    gap: Spacing.sm,
+    paddingHorizontal: Spacing.lg,
+    paddingBottom: Spacing.sm,
+  },
+  segBtn: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: Spacing.sm,
+    borderRadius: Radius.pill,
+    backgroundColor: Palette.surface,
+  },
+  centerBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center' },
+  genInput: {
+    color: Palette.text,
+    ...Type.body,
+    backgroundColor: Palette.surface,
+    borderRadius: Radius.md,
+    padding: Spacing.md,
+    minHeight: 120,
+    marginVertical: Spacing.sm,
   },
   headerTitle: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
   dot: { width: 12, height: 12, borderRadius: 6 },

@@ -266,6 +266,107 @@ export async function renameDocument(id: string, title: string): Promise<void> {
   if (error) throw error;
 }
 
+/* ---------- Contenus générés par IA (MC-4) ---------- */
+
+export type GenKind = 'quiz' | 'fiche' | 'flashcards' | 'resume' | 'examen';
+
+export type QuizQuestion = { q: string; choices: string[]; answer: number; explanation?: string };
+export type GenPayload =
+  | { questions: QuizQuestion[] }
+  | { cards: { front: string; back: string }[] }
+  | { sections: { heading: string; points: string[] }[] }
+  | { text: string }
+  | Record<string, unknown>;
+
+export type GenItem = {
+  id: string;
+  user_id: string;
+  subject_id: string;
+  chapter_id: string | null;
+  source_document_id: string | null;
+  kind: GenKind;
+  title: string;
+  payload: GenPayload;
+  created_at: string;
+  updated_at: string;
+};
+
+export type GenerateResult = {
+  configured: boolean;
+  kind?: GenKind;
+  title?: string;
+  payload?: GenPayload;
+  error?: string;
+};
+
+/** Appelle l'edge function de génération (LLM). Renvoie configured:false si aucune clé n'est en place. */
+export async function generateContent(
+  kind: GenKind,
+  context: string,
+  title?: string,
+): Promise<GenerateResult> {
+  const { data, error } = await supabase.functions.invoke('generate-content', {
+    body: { kind, context, title },
+  });
+  if (error) throw error;
+  return data as GenerateResult;
+}
+
+export async function saveGeneratedContent(params: {
+  userId: string;
+  subjectId: string;
+  chapterId: string;
+  sourceDocumentId?: string | null;
+  kind: GenKind;
+  title: string;
+  payload: GenPayload;
+}): Promise<GenItem> {
+  const { data, error } = await supabase
+    .from('generated_content')
+    .insert({
+      user_id: params.userId,
+      subject_id: params.subjectId,
+      chapter_id: params.chapterId,
+      source_document_id: params.sourceDocumentId ?? null,
+      kind: params.kind,
+      title: params.title,
+      payload: params.payload,
+    })
+    .select('*')
+    .single();
+  if (error) throw error;
+  return data as GenItem;
+}
+
+export async function listGeneratedContent(chapterId: string): Promise<GenItem[]> {
+  const { data, error } = await supabase
+    .from('generated_content')
+    .select('*')
+    .eq('chapter_id', chapterId)
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as GenItem[];
+}
+
+export async function getGeneratedContent(id: string): Promise<GenItem | null> {
+  const { data, error } = await supabase.from('generated_content').select('*').eq('id', id).single();
+  if (error) throw error;
+  return (data as GenItem) ?? null;
+}
+
+export async function renameGeneratedContent(id: string, title: string): Promise<void> {
+  const { error } = await supabase
+    .from('generated_content')
+    .update({ title: title.trim(), updated_at: new Date().toISOString() })
+    .eq('id', id);
+  if (error) throw error;
+}
+
+export async function deleteGeneratedContent(id: string): Promise<void> {
+  const { error } = await supabase.from('generated_content').delete().eq('id', id);
+  if (error) throw error;
+}
+
 export async function moveDocument(id: string, chapterId: string): Promise<void> {
   const { error } = await supabase
     .from('documents')
