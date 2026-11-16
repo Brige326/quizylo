@@ -77,6 +77,32 @@ export async function createEvent(params: {
   return data as EventItem;
 }
 
+export async function updateEvent(
+  id: string,
+  params: {
+    title: string;
+    category: string;
+    startsAt: string;
+    endsAt?: string | null;
+    allDay: boolean;
+    description?: string | null;
+  },
+): Promise<void> {
+  const { error } = await supabase
+    .from('events')
+    .update({
+      title: params.title.trim(),
+      category: params.category,
+      starts_at: params.startsAt,
+      ends_at: params.endsAt ?? null,
+      all_day: params.allDay,
+      description: params.description ?? null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', id);
+  if (error) throw error;
+}
+
 export async function deleteEvent(id: string): Promise<void> {
   const { error } = await supabase.from('events').delete().eq('id', id);
   if (error) throw error;

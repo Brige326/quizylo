@@ -10,6 +10,7 @@ import {
   Modal,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Switch,
   TextInput,
@@ -31,6 +32,7 @@ import {
   createEvent,
   deleteEvent,
   listEventsBetween,
+  updateEvent,
   type EventItem,
 } from '@/lib/planning';
 
@@ -47,14 +49,23 @@ function sameDay(a: Date, b: Date): boolean {
     a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate()
   );
 }
+function combine(date: Date, time: Date): Date {
+  const d = new Date(date);
+  d.setHours(time.getHours(), time.getMinutes(), 0, 0);
+  return d;
+}
 function cap(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 function fmtDay(d: Date): string {
   return cap(d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }));
 }
-function fmtTime(iso: string): string {
-  return new Date(iso).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+function fmtDateShort(d: Date): string {
+  return cap(d.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' }));
+}
+function fmtTime(iso: string | Date): string {
+  const d = typeof iso === 'string' ? new Date(iso) : iso;
+  return d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
 }
 function nextHour(): Date {
   const d = new Date();
@@ -73,13 +84,19 @@ export default function PlanningScreen() {
   const [events, setEvents] = useState<EventItem[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Formulaire d'ajout
-  const [addOpen, setAddOpen] = useState(false);
+  // Formulaire (création + modification)
+  const [formOpen, setFormOpen] = useState(false);
+  const [editing, setEditing] = useState<EventItem | null>(null);
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState(CATEGORIES[0].key);
+  const [description, setDescription] = useState('');
   const [allDay, setAllDay] = useState(false);
-  const [time, setTime] = useState<Date>(nextHour);
-  const [showPicker, setShowPicker] = useState(false);
+  const [formDate, setFormDate] = useState<Date>(() => startOfDay(new Date()));
+  const [startTime, setStartTime] = useState<Date>(nextHour);
+  const [endTime, setEndTime] = useState<Date | null>(null);
+  const [showDate, setShowDate] = useState(false);
+  const [showStart, setShowStart] = useState(false);
+  const [showEnd, setShowEnd] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const isToday = useMemo(() => sameDay(day, new Date()), [day]);
@@ -105,34 +122,72 @@ export default function PlanningScreen() {
     load();
   }, [load]);
 
-  const closeAdd = () => {
-    if (!saving) setAddOpen(false);
+  const closeForm = () => {
+    if (saving) return;
+    setFormOpen(false);
+    setShowDate(false);
+    setShowStart(false);
+    setShowEnd(false);
   };
 
   const openAdd = () => {
+    setEditing(null);
     setTitle('');
     setCategory(CATEGORIES[0].key);
+    setDescription('');
     setAllDay(false);
-    setTime(nextHour());
-    setShowPicker(false);
-    setAddOpen(true);
+    setFormDate(startOfDay(day));
+    setStartTime(nextHour());
+    setEndTime(null);
+    setShowDate(false);
+    setShowStart(false);
+    setShowEnd(false);
+    setFormOpen(true);
+  };
+
+  const openEdit = (e: EventItem) => {
+    const s = new Date(e.starts_at);
+    setEditing(e);
+    setTitle(e.title);
+    setCategory(e.category);
+    setDescription(e.description ?? '');
+    setAllDay(e.all_day);
+    setFormDate(startOfDay(s));
+    setStartTime(s);
+    setEndTime(e.ends_at ? new Date(e.ends_at) : null);
+    setShowDate(false);
+    setShowStart(false);
+    setShowEnd(false);
+    setFormOpen(true);
   };
 
   const save = async () => {
     if (!title.trim() || !userId) return;
+    const start = allDay ? startOfDay(formDate) : combine(formDate, startTime);
+    let endISO: string | null = null;
+    if (!allDay && endTime) {
+      const end = combine(formDate, endTime);
+      if (end.getTime() <= start.getTime()) {
+        Alert.alert('Heure de fin', "L'heure de fin doit être après l'heure de début.");
+        return;
+      }
+      endISO = end.toISOString();
+    }
     setSaving(true);
-    const start = startOfDay(day);
-    if (!allDay) start.setHours(time.getHours(), time.getMinutes(), 0, 0);
+    const payload = {
+      title,
+      category,
+      startsAt: start.toISOString(),
+      endsAt: endISO,
+      allDay,
+      description: description.trim() || null,
+    };
     try {
-      await createEvent({
-        userId,
-        title,
-        category,
-        startsAt: start.toISOString(),
-        allDay,
-      });
-      setAddOpen(false);
-      await load();
+      if (editing) await updateEvent(editing.id, payload);
+      else await createEvent({ userId, ...payload });
+      setFormOpen(false);
+      if (sameDay(formDate, day)) await load();
+      else setDay(startOfDay(formDate)); // on bascule sur le jour de l'événement
     } catch {
       Alert.alert('Oups', "L'événement n'a pas pu être enregistré.");
     } finally {
@@ -140,12 +195,16 @@ export default function PlanningScreen() {
     }
   };
 
-  const onEventPress = (e: EventItem) => {
-    Alert.alert(e.title, undefined, [
+  const onDelete = () => {
+    const e = editing;
+    if (!e) return;
+    Alert.alert('Supprimer', `« ${e.title} » sera supprimé définitivement.`, [
+      { text: 'Annuler', style: 'cancel' },
       {
         text: 'Supprimer',
         style: 'destructive',
         onPress: async () => {
+          setFormOpen(false);
           setEvents((prev) => prev.filter((x) => x.id !== e.id));
           try {
             await deleteEvent(e.id);
@@ -154,7 +213,6 @@ export default function PlanningScreen() {
           }
         },
       },
-      { text: 'Fermer', style: 'cancel' },
     ]);
   };
 
@@ -192,7 +250,6 @@ export default function PlanningScreen() {
         </Tappable>
       </View>
 
-      {/* Navigation de date */}
       <View style={styles.dateBar}>
         <Tappable style={styles.navArrow} onPress={() => setDay((d) => addDays(d, -1))} accessibilityLabel="Jour précédent">
           <Ionicons name="chevron-back" size={22} color={Palette.text} />
@@ -232,11 +289,24 @@ export default function PlanningScreen() {
           renderItem={({ item }) => {
             const cat = categoryOf(item.category);
             return (
-              <Tappable style={styles.eventRow} onPress={() => onEventPress(item)} haptic={false}>
+              <Tappable style={styles.eventRow} onPress={() => openEdit(item)} haptic={false}>
                 <View style={styles.timeCol}>
-                  <Text variant="small" color={Palette.textSecondary}>
-                    {item.all_day ? 'Journée' : fmtTime(item.starts_at)}
-                  </Text>
+                  {item.all_day ? (
+                    <Text variant="small" color={Palette.textSecondary}>
+                      Journée
+                    </Text>
+                  ) : (
+                    <>
+                      <Text variant="small" color={Palette.text}>
+                        {fmtTime(item.starts_at)}
+                      </Text>
+                      {item.ends_at ? (
+                        <Text variant="small" color={Palette.textMuted}>
+                          {fmtTime(item.ends_at)}
+                        </Text>
+                      ) : null}
+                    </>
+                  )}
                 </View>
                 <View style={[styles.catBar, { backgroundColor: cat.color }]} />
                 <View style={{ flex: 1 }}>
@@ -245,97 +315,191 @@ export default function PlanningScreen() {
                   </Text>
                   <Text variant="small" color={Palette.textMuted}>
                     {cat.label}
+                    {item.description ? ' · …' : ''}
                   </Text>
                 </View>
+                <Ionicons name="chevron-forward" size={18} color={Palette.textMuted} />
               </Tappable>
             );
           }}
         />
       )}
 
-      {/* Modale d'ajout */}
-      <Modal visible={addOpen} transparent animationType="fade" onRequestClose={closeAdd}>
-        <Pressable style={styles.backdrop} onPress={closeAdd}>
+      {/* Modale création / modification */}
+      <Modal visible={formOpen} transparent animationType="fade" onRequestClose={closeForm}>
+        <Pressable style={styles.backdrop} onPress={closeForm}>
           <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
             <Pressable style={styles.sheet} onPress={() => {}}>
-              <Text variant="heading">Nouvelle activité</Text>
-
-              <TextInput
-                style={styles.input}
-                placeholder="Titre (ex. Réviser les probabilités)"
-                placeholderTextColor={Palette.textMuted}
-                value={title}
-                onChangeText={setTitle}
-                autoFocus
-                maxLength={80}
-              />
-
-              <View style={styles.rowBetween}>
-                <Text variant="bodyStrong">Toute la journée</Text>
-                <Switch
-                  value={allDay}
-                  onValueChange={setAllDay}
-                  trackColor={{ true: Palette.primary, false: Palette.border }}
-                  thumbColor="#fff"
-                />
-              </View>
-
-              {!allDay ? (
-                <Tappable style={styles.rowBetween} onPress={() => setShowPicker((s) => !s)} haptic={false}>
-                  <Text variant="bodyStrong">Heure</Text>
-                  <Text variant="bodyStrong" color={Palette.primary}>
-                    {time.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
-                  </Text>
-                </Tappable>
-              ) : null}
-
-              {!allDay && showPicker ? (
-                <DateTimePicker
-                  value={time}
-                  mode="time"
-                  is24Hour
-                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                  onChange={(_e, d) => {
-                    if (Platform.OS !== 'ios') setShowPicker(false);
-                    if (d) setTime(d);
-                  }}
-                />
-              ) : null}
-
-              <Text variant="small" color={Palette.textSecondary} style={{ marginTop: Spacing.sm }}>
-                Catégorie
-              </Text>
-              <View style={styles.catRow}>
-                {CATEGORIES.map((c) => {
-                  const active = c.key === category;
-                  return (
-                    <Tappable
-                      key={c.key}
-                      style={[styles.catChip, active && { backgroundColor: c.color + '33', borderColor: c.color }]}
-                      onPress={() => setCategory(c.key)}
-                      haptic={false}>
-                      <View style={[styles.catDot, { backgroundColor: c.color }]} />
-                      <Text variant="small" color={active ? Palette.text : Palette.textSecondary}>
-                        {c.label}
-                      </Text>
+              <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+                <View style={styles.sheetHead}>
+                  <Text variant="heading">{editing ? "Modifier l'activité" : 'Nouvelle activité'}</Text>
+                  {editing ? (
+                    <Tappable onPress={onDelete} hitSlop={10} accessibilityLabel="Supprimer">
+                      <Ionicons name="trash-outline" size={22} color={Palette.danger} />
                     </Tappable>
-                  );
-                })}
-              </View>
+                  ) : null}
+                </View>
 
-              <View style={styles.actions}>
-                <View style={{ flex: 1 }}>
-                  <Button label="Annuler" variant="ghost" onPress={closeAdd} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Titre (ex. Réviser les probabilités)"
+                  placeholderTextColor={Palette.textMuted}
+                  value={title}
+                  onChangeText={setTitle}
+                  maxLength={80}
+                />
+
+                <Row label="Date">
+                  <Tappable onPress={() => setShowDate((s) => !s)} hitSlop={6}>
+                    <Text variant="bodyStrong" color={Palette.primary}>
+                      {fmtDateShort(formDate)}
+                    </Text>
+                  </Tappable>
+                </Row>
+                {showDate ? (
+                  <DateTimePicker
+                    value={formDate}
+                    mode="date"
+                    display={Platform.OS === 'ios' ? 'inline' : 'default'}
+                    onChange={(_e, d) => {
+                      if (Platform.OS !== 'ios') setShowDate(false);
+                      if (d) setFormDate(startOfDay(d));
+                    }}
+                  />
+                ) : null}
+
+                <Row label="Toute la journée">
+                  <Switch
+                    value={allDay}
+                    onValueChange={setAllDay}
+                    trackColor={{ true: Palette.primary, false: Palette.border }}
+                    thumbColor="#fff"
+                  />
+                </Row>
+
+                {!allDay ? (
+                  <>
+                    <Row label="Début">
+                      <Tappable onPress={() => setShowStart((s) => !s)} hitSlop={6}>
+                        <Text variant="bodyStrong" color={Palette.primary}>
+                          {fmtTime(startTime)}
+                        </Text>
+                      </Tappable>
+                    </Row>
+                    {showStart ? (
+                      <DateTimePicker
+                        value={startTime}
+                        mode="time"
+                        is24Hour
+                        display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                        onChange={(_e, d) => {
+                          if (Platform.OS !== 'ios') setShowStart(false);
+                          if (d) setStartTime(d);
+                        }}
+                      />
+                    ) : null}
+
+                    <Row label="Fin">
+                      {endTime ? (
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.sm }}>
+                          <Tappable onPress={() => setShowEnd((s) => !s)} hitSlop={6}>
+                            <Text variant="bodyStrong" color={Palette.primary}>
+                              {fmtTime(endTime)}
+                            </Text>
+                          </Tappable>
+                          <Tappable onPress={() => { setEndTime(null); setShowEnd(false); }} hitSlop={6} accessibilityLabel="Retirer la fin">
+                            <Ionicons name="close-circle" size={18} color={Palette.textMuted} />
+                          </Tappable>
+                        </View>
+                      ) : (
+                        <Tappable
+                          onPress={() => {
+                            const d = new Date(startTime);
+                            d.setHours(d.getHours() + 1);
+                            setEndTime(d);
+                            setShowEnd(true);
+                          }}
+                          hitSlop={6}>
+                          <Text variant="bodyStrong" color={Palette.textSecondary}>
+                            Ajouter
+                          </Text>
+                        </Tappable>
+                      )}
+                    </Row>
+                    {endTime && showEnd ? (
+                      <DateTimePicker
+                        value={endTime}
+                        mode="time"
+                        is24Hour
+                        display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                        onChange={(_e, d) => {
+                          if (Platform.OS !== 'ios') setShowEnd(false);
+                          if (d) setEndTime(d);
+                        }}
+                      />
+                    ) : null}
+                  </>
+                ) : null}
+
+                <Text variant="small" color={Palette.textSecondary} style={{ marginTop: Spacing.sm }}>
+                  Catégorie
+                </Text>
+                <View style={styles.catRow}>
+                  {CATEGORIES.map((c) => {
+                    const active = c.key === category;
+                    return (
+                      <Tappable
+                        key={c.key}
+                        style={[styles.catChip, active && { backgroundColor: c.color + '33', borderColor: c.color }]}
+                        onPress={() => setCategory(c.key)}
+                        haptic={false}>
+                        <View style={[styles.catDot, { backgroundColor: c.color }]} />
+                        <Text variant="small" color={active ? Palette.text : Palette.textSecondary}>
+                          {c.label}
+                        </Text>
+                      </Tappable>
+                    );
+                  })}
                 </View>
-                <View style={{ flex: 1 }}>
-                  <Button label="Créer" onPress={save} loading={saving} disabled={!title.trim() || saving} />
+
+                <TextInput
+                  style={styles.descInput}
+                  placeholder="Note (facultatif)"
+                  placeholderTextColor={Palette.textMuted}
+                  value={description}
+                  onChangeText={setDescription}
+                  multiline
+                  textAlignVertical="top"
+                />
+
+                <View style={styles.actions}>
+                  <View style={{ flex: 1 }}>
+                    <Button label="Annuler" variant="ghost" onPress={closeForm} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Button
+                      label={editing ? 'Enregistrer' : 'Créer'}
+                      onPress={save}
+                      loading={saving}
+                      disabled={!title.trim() || saving}
+                    />
+                  </View>
                 </View>
-              </View>
+              </ScrollView>
             </Pressable>
           </KeyboardAvoidingView>
         </Pressable>
       </Modal>
     </Screen>
+  );
+}
+
+function Row({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <View style={styles.rowBetween}>
+      <Text variant="bodyStrong">{label}</Text>
+      {children}
+    </View>
   );
 }
 
@@ -390,9 +554,10 @@ const styles = StyleSheet.create({
     backgroundColor: Palette.surfaceElevated,
     borderRadius: Radius.lg,
     padding: Spacing.lg,
-    gap: Spacing.sm,
     marginHorizontal: Spacing.lg,
+    maxHeight: '86%',
   },
+  sheetHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   input: {
     color: Palette.text,
     ...Type.body,
@@ -400,7 +565,17 @@ const styles = StyleSheet.create({
     borderRadius: Radius.md,
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.md,
-    marginTop: Spacing.sm,
+    marginTop: Spacing.md,
+  },
+  descInput: {
+    color: Palette.text,
+    ...Type.body,
+    backgroundColor: Palette.surface,
+    borderRadius: Radius.md,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.md,
+    minHeight: 72,
+    marginTop: Spacing.md,
   },
   rowBetween: {
     flexDirection: 'row',
@@ -421,5 +596,5 @@ const styles = StyleSheet.create({
     backgroundColor: Palette.surface,
   },
   catDot: { width: 10, height: 10, borderRadius: 5 },
-  actions: { flexDirection: 'row', gap: Spacing.md, marginTop: Spacing.md },
+  actions: { flexDirection: 'row', gap: Spacing.md, marginTop: Spacing.lg },
 });
