@@ -226,6 +226,13 @@ rendus (indices + flèche de réaction, capture), 0 erreur. `tsc` = 0, export we
 iOS + Android) remplaçant l'`Alert.prompt` iOS-only pour maths et chimie. `tsc` = 0,
 export web OK.
 
+**S17 — Graphiques (tracé de fonction)** : `src/lib/plot.ts` (`functionPlotSvg`) trace
+y = f(x) en SVG (mathjs pour évaluer l'expression, discontinuités gérées, axes +
+légende). Entrée « Insérer un graphique (fonction) » → SVG inséré comme image
+(data URI, privé, auto-contenu). Auto-test : génération x^2/sin(x)/1/x + rendu
+navigateur **et dans l'éditeur réel** (parabole affichée dans le bundle app, capture),
+0 erreur. `tsc` = 0, export web OK.
+
 ### Limite de test (honnête)
 
 Le rendu natif dans la WebView iOS (Expo Go sur iPhone) n'est pas testable depuis

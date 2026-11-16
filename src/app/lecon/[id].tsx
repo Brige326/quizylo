@@ -23,6 +23,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
 
 import { LessonRichEditor, type LessonRichEditorHandle } from '@/components/LessonRichEditor';
+import { functionPlotSvg } from '@/lib/plot';
 import { Screen } from '@/components/ui/Screen';
 import { Text } from '@/components/ui/Text';
 import { Palette, Radius, Spacing, Type } from '@/constants/theme';
@@ -80,7 +81,7 @@ export default function LeconScreen() {
   const [blocks, setBlocks] = useState<LessonBlock[]>([]);
   const [content, setContent] = useState<Record<string, unknown> | null>(null);
   // Saisie de formule (maths/chimie) — modale compatible iOS et Android.
-  const [formula, setFormula] = useState<{ kind: 'math' | 'chem' } | null>(null);
+  const [formula, setFormula] = useState<{ kind: 'math' | 'chem' | 'plot' } | null>(null);
   const [formulaText, setFormulaText] = useState('');
   const [saveState, setSaveState] = useState<SaveState>('saved');
   const [focusId, setFocusId] = useState<string | null>(null);
@@ -327,7 +328,7 @@ export default function LeconScreen() {
     ]);
   };
 
-  const openFormula = (kind: 'math' | 'chem') => {
+  const openFormula = (kind: 'math' | 'chem' | 'plot') => {
     setFormulaText('');
     setFormula({ kind });
   };
@@ -335,8 +336,19 @@ export default function LeconScreen() {
   const submitFormula = () => {
     const t = formulaText.trim();
     if (t && formula) {
-      if (formula.kind === 'chem') richRef.current?.insertMath(`\\ce{${t}}`, true);
-      else richRef.current?.insertMath(t, false);
+      if (formula.kind === 'chem') {
+        richRef.current?.insertMath(`\\ce{${t}}`, true);
+      } else if (formula.kind === 'plot') {
+        try {
+          const svg = functionPlotSvg(t);
+          const src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+          richRef.current?.insertImage(src);
+        } catch {
+          Alert.alert('Graphique', "Fonction non reconnue. Exemples : x^2, sin(x), 1/x.");
+        }
+      } else {
+        richRef.current?.insertMath(t, false);
+      }
     }
     setFormula(null);
     setFormulaText('');
@@ -352,6 +364,7 @@ export default function LeconScreen() {
       { text: 'Modifier le tableau…', onPress: tableMenu },
       { text: 'Insérer une formule (maths)', onPress: insertMathPrompt },
       { text: 'Insérer une formule chimique', onPress: insertChemPrompt },
+      { text: 'Insérer un graphique (fonction)', onPress: () => openFormula('plot') },
       { text: 'Prendre une photo', onPress: takePhotoInline },
       { text: 'Importer une image', onPress: pickImageInline },
       { text: 'Importer un PDF', onPress: pickPdf },
@@ -970,18 +983,30 @@ export default function LeconScreen() {
           <Pressable style={styles.sheetBackdrop} onPress={() => setFormula(null)}>
             <Pressable style={[styles.sheet, { paddingBottom: insets.bottom + Spacing.lg }]}>
               <Text variant="heading" style={{ marginBottom: Spacing.xs }}>
-                {formula?.kind === 'chem' ? 'Formule chimique' : 'Formule mathématique'}
+                {formula?.kind === 'chem'
+                  ? 'Formule chimique'
+                  : formula?.kind === 'plot'
+                    ? 'Graphique de fonction'
+                    : 'Formule mathématique'}
               </Text>
               <Text variant="small" color={Palette.textMuted} style={{ marginBottom: Spacing.md }}>
                 {formula?.kind === 'chem'
                   ? 'Ex. 2H2 + O2 -> 2H2O, H2SO4, CaCO3'
-                  : 'LaTeX — ex. x^2 + 1, \\frac{a}{b}, \\int_0^1 x\\,dx'}
+                  : formula?.kind === 'plot'
+                    ? 'Fonction de x — ex. x^2, sin(x), 1/x (tracée sur [-6, 6])'
+                    : 'LaTeX — ex. x^2 + 1, \\frac{a}{b}, \\int_0^1 x\\,dx'}
               </Text>
               <TextInput
                 style={styles.formulaInput}
                 value={formulaText}
                 onChangeText={setFormulaText}
-                placeholder={formula?.kind === 'chem' ? '2H2 + O2 -> 2H2O' : 'x^2 + 1'}
+                placeholder={
+                  formula?.kind === 'chem'
+                    ? '2H2 + O2 -> 2H2O'
+                    : formula?.kind === 'plot'
+                      ? 'x^2'
+                      : 'x^2 + 1'
+                }
                 placeholderTextColor={Palette.textMuted}
                 autoFocus
                 autoCapitalize="none"
