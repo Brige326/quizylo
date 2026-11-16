@@ -136,6 +136,59 @@ export async function deleteChapter(id: string): Promise<void> {
   if (error) throw error;
 }
 
+/* ---------- Leçons (chapitres → leçons) ---------- */
+
+export type Lesson = {
+  id: string;
+  user_id: string;
+  subject_id: string;
+  chapter_id: string;
+  title: string;
+  position: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export async function listLessons(chapterId: string): Promise<Lesson[]> {
+  const { data, error } = await supabase
+    .from('lessons')
+    .select('*')
+    .eq('chapter_id', chapterId)
+    .order('position', { ascending: true })
+    .order('created_at', { ascending: true });
+  if (error) throw error;
+  return (data ?? []) as Lesson[];
+}
+
+export async function createLesson(
+  userId: string,
+  subjectId: string,
+  chapterId: string,
+  title: string,
+  position: number,
+): Promise<Lesson> {
+  const { data, error } = await supabase
+    .from('lessons')
+    .insert({ user_id: userId, subject_id: subjectId, chapter_id: chapterId, title: title.trim(), position })
+    .select('*')
+    .single();
+  if (error) throw error;
+  return data as Lesson;
+}
+
+export async function renameLesson(id: string, title: string): Promise<void> {
+  const { error } = await supabase
+    .from('lessons')
+    .update({ title: title.trim(), updated_at: new Date().toISOString() })
+    .eq('id', id);
+  if (error) throw error;
+}
+
+export async function deleteLesson(id: string): Promise<void> {
+  const { error } = await supabase.from('lessons').delete().eq('id', id);
+  if (error) throw error;
+}
+
 /* ---------- Documents (MC-3) ---------- */
 
 export type DocKind = 'pdf' | 'image' | 'note' | 'text';

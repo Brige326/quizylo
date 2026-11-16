@@ -74,17 +74,39 @@ export default function MatiereDetailScreen() {
     setModalOpen(true);
   };
 
+  const goNewLesson = (chapter: Chapter) => {
+    router.push({
+      pathname: '/chapitre/[id]',
+      params: { id: chapter.id, subjectId, name: chapter.name, color, new: '1' },
+    });
+  };
+
+  const onNewLesson = () => {
+    if (chapters.length === 0) {
+      Alert.alert(
+        'Nouvelle leçon',
+        "Crée d’abord un chapitre : tu pourras ensuite y ajouter des leçons.",
+        [
+          { text: 'Créer un chapitre', onPress: openCreate },
+          { text: 'Annuler', style: 'cancel' },
+        ],
+      );
+      return;
+    }
+    if (chapters.length === 1) {
+      goNewLesson(chapters[0]);
+      return;
+    }
+    Alert.alert('Dans quel chapitre ?', undefined, [
+      ...chapters.map((c) => ({ text: c.name, onPress: () => goNewLesson(c) })),
+      { text: 'Annuler', style: 'cancel' as const },
+    ]);
+  };
+
   const onAdd = () => {
     Alert.alert('Ajouter', undefined, [
       { text: 'Nouveau chapitre', onPress: openCreate },
-      {
-        text: 'Nouvelle leçon',
-        onPress: () =>
-          Alert.alert(
-            'Nouvelle leçon',
-            'La création de leçons à l’intérieur d’un chapitre arrive à la prochaine étape.',
-          ),
-      },
+      { text: 'Nouvelle leçon', onPress: onNewLesson },
       { text: 'Annuler', style: 'cancel' },
     ]);
   };
