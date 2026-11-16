@@ -154,6 +154,11 @@ début de chaque séance**, pas d'avance.
   undo-redo. Auto-test moteur : sélection → `setColor` → `<span style="color…">`.
   `tsc` = 0, export web OK.
 
+- **S8 — Surlignage** : le bandeau de couleurs bascule entre **couleur du texte**
+  et **surligneur** (`setHighlight()` / `unsetHighlight()`). Un seul bandeau, un
+  bouton de mode (Texte / Surligne). Auto-test moteur : `setHighlight` applique
+  bien un `<mark>` ; `unsetHighlight` OK. `tsc` = 0, export web OK.
+
 ## Ce qui exige un bundle d'éditeur web personnalisé (phase d'infra à part)
 
 Tableaux, mathématiques (KaTeX/MathLive), chimie, graphiques, polices custom,

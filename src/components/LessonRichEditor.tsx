@@ -3,8 +3,17 @@
 // texte (migration sans perte, `blocks` n'est jamais détruit). Autosave débouncé.
 // Expose `insertImage(src)` au parent pour insérer une image dans le flux du texte.
 
+import { Ionicons } from '@expo/vector-icons';
 import { RichText, Toolbar, useEditorBridge } from '@10play/tentap-editor';
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef } from 'react';
+import {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -80,6 +89,13 @@ export const LessonRichEditor = forwardRef<LessonRichEditorHandle, Props>(functi
   const editorRef = useRef(editor);
   editorRef.current = editor;
 
+  // Mode du bandeau de couleurs : couleur du texte ou surligneur.
+  const [colorMode, setColorMode] = useState<'text' | 'highlight'>('text');
+  const applyColor = (c: string) =>
+    colorMode === 'text' ? editor.setColor(c) : editor.setHighlight(c);
+  const clearColor = () =>
+    colorMode === 'text' ? editor.unsetColor() : editor.unsetHighlight();
+
   // Insertion d'image exposée au parent.
   useImperativeHandle(
     ref,
@@ -115,23 +131,34 @@ export const LessonRichEditor = forwardRef<LessonRichEditorHandle, Props>(functi
 
   return (
     <View style={styles.root}>
-      {/* Couleur du texte : sélectionne du texte puis choisis une couleur. */}
+      {/* Sélectionne du texte, choisis le mode (couleur / surligneur), puis une couleur. */}
       <View style={styles.colorBar}>
+        <Pressable
+          onPress={() => setColorMode((m) => (m === 'text' ? 'highlight' : 'text'))}
+          style={styles.modeToggle}
+          accessibilityLabel={colorMode === 'text' ? 'Mode couleur du texte' : 'Mode surligneur'}>
+          <Ionicons
+            name={colorMode === 'text' ? 'text' : 'brush'}
+            size={16}
+            color="#FFFFFF"
+          />
+          <Text style={styles.modeLabel}>{colorMode === 'text' ? 'Texte' : 'Surligne'}</Text>
+        </Pressable>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={styles.colorRow}>
           <Pressable
-            onPress={() => editor.unsetColor()}
+            onPress={clearColor}
             style={styles.colorDefault}
-            accessibilityLabel="Couleur par défaut">
-            <Text style={styles.colorDefaultText}>A</Text>
+            accessibilityLabel="Retirer la couleur">
+            <Ionicons name="ban" size={15} color="#FFFFFF" />
           </Pressable>
           {LESSON_TEXT_COLORS.map((c) => (
             <Pressable
               key={c}
-              onPress={() => editor.setColor(c)}
+              onPress={() => applyColor(c)}
               style={[styles.swatch, { backgroundColor: c }]}
               accessibilityLabel={`Couleur ${c}`}
             />
@@ -154,9 +181,22 @@ const styles = StyleSheet.create({
   root: { flex: 1 },
   toolbar: { position: 'absolute', left: 0, right: 0, bottom: 0 },
   colorBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: 'rgba(255,255,255,0.08)',
   },
+  modeToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingLeft: 16,
+    paddingRight: 10,
+    paddingVertical: 8,
+    borderRightWidth: StyleSheet.hairlineWidth,
+    borderRightColor: 'rgba(255,255,255,0.12)',
+  },
+  modeLabel: { color: '#FFFFFF', fontSize: 12, fontWeight: '600' },
   colorRow: {
     flexDirection: 'row',
     alignItems: 'center',
