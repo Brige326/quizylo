@@ -29,6 +29,8 @@ export type EventItem = {
   starts_at: string;
   ends_at: string | null;
   all_day: boolean;
+  reminder_minutes: number | null;
+  notif_id: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -59,6 +61,8 @@ export async function createEvent(params: {
   endsAt?: string | null;
   allDay: boolean;
   description?: string | null;
+  reminderMinutes?: number | null;
+  notifId?: string | null;
 }): Promise<EventItem> {
   const { data, error } = await supabase
     .from('events')
@@ -70,6 +74,8 @@ export async function createEvent(params: {
       ends_at: params.endsAt ?? null,
       all_day: params.allDay,
       description: params.description ?? null,
+      reminder_minutes: params.reminderMinutes ?? null,
+      notif_id: params.notifId ?? null,
     })
     .select('*')
     .single();
@@ -86,6 +92,8 @@ export async function updateEvent(
     endsAt?: string | null;
     allDay: boolean;
     description?: string | null;
+    reminderMinutes?: number | null;
+    notifId?: string | null;
   },
 ): Promise<void> {
   const { error } = await supabase
@@ -97,6 +105,8 @@ export async function updateEvent(
       ends_at: params.endsAt ?? null,
       all_day: params.allDay,
       description: params.description ?? null,
+      reminder_minutes: params.reminderMinutes ?? null,
+      notif_id: params.notifId ?? null,
       updated_at: new Date().toISOString(),
     })
     .eq('id', id);
@@ -118,6 +128,8 @@ export type TaskItem = {
   due_date: string; // 'YYYY-MM-DD'
   done: boolean;
   description: string | null;
+  reminder_minutes: number | null;
+  notif_id: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -146,6 +158,8 @@ export async function createTask(params: {
   category: string;
   dueDate: string;
   description?: string | null;
+  reminderMinutes?: number | null;
+  notifId?: string | null;
 }): Promise<TaskItem> {
   const { data, error } = await supabase
     .from('tasks')
@@ -155,6 +169,8 @@ export async function createTask(params: {
       category: params.category,
       due_date: params.dueDate,
       description: params.description ?? null,
+      reminder_minutes: params.reminderMinutes ?? null,
+      notif_id: params.notifId ?? null,
     })
     .select('*')
     .single();
@@ -164,7 +180,14 @@ export async function createTask(params: {
 
 export async function updateTask(
   id: string,
-  params: { title: string; category: string; dueDate: string; description?: string | null },
+  params: {
+    title: string;
+    category: string;
+    dueDate: string;
+    description?: string | null;
+    reminderMinutes?: number | null;
+    notifId?: string | null;
+  },
 ): Promise<void> {
   const { error } = await supabase
     .from('tasks')
@@ -173,6 +196,8 @@ export async function updateTask(
       category: params.category,
       due_date: params.dueDate,
       description: params.description ?? null,
+      reminder_minutes: params.reminderMinutes ?? null,
+      notif_id: params.notifId ?? null,
       updated_at: new Date().toISOString(),
     })
     .eq('id', id);

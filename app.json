@@ -43,7 +43,8 @@
           "photosPermission": "Quizylo accède à tes photos pour importer tes cours.",
           "cameraPermission": "Quizylo utilise l'appareil photo pour prendre tes cours en photo."
         }
-      ]
+      ],
+      "expo-notifications"
     ],
     "experiments": {
       "typedRoutes": true,

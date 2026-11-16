@@ -26,6 +26,7 @@ import { Text } from '@/components/ui/Text';
 import { TopBar } from '@/components/TopBar';
 import { Palette, Radius, Spacing, Type } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth';
+import { cancelReminder, scheduleReminder } from '@/lib/notifications';
 import {
   CATEGORIES,
   categoryOf,
@@ -43,6 +44,24 @@ import {
 } from '@/lib/planning';
 
 type ViewMode = 'day' | 'week' | 'month';
+
+const REMINDERS: { min: number | null; label: string }[] = [
+  { min: null, label: 'Aucun' },
+  { min: 0, label: "À l'heure" },
+  { min: 5, label: '5 min avant' },
+  { min: 15, label: '15 min avant' },
+  { min: 30, label: '30 min avant' },
+  { min: 60, label: '1 h avant' },
+  { min: 1440, label: '1 jour avant' },
+];
+function reminderLabel(min: number | null): string {
+  return REMINDERS.find((r) => r.min === min)?.label ?? 'Aucun';
+}
+function dayAt(date: Date, h: number): Date {
+  const d = new Date(date);
+  d.setHours(h, 0, 0, 0);
+  return d;
+}
 
 function startOfDay(d: Date): Date {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate());
@@ -134,6 +153,7 @@ export default function PlanningScreen() {
   const [taskDate, setTaskDate] = useState<Date>(() => startOfDay(new Date()));
   const [taskDesc, setTaskDesc] = useState('');
   const [taskShowDate, setTaskShowDate] = useState(false);
+  const [taskReminderMin, setTaskReminderMin] = useState<number | null>(null);
   const [taskSaving, setTaskSaving] = useState(false);
 
   // Formulaire (création + modification)
@@ -149,7 +169,11 @@ export default function PlanningScreen() {
   const [showDate, setShowDate] = useState(false);
   const [showStart, setShowStart] = useState(false);
   const [showEnd, setShowEnd] = useState(false);
+  const [reminderMin, setReminderMin] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
+
+  // Feuille de choix du rappel ('event' | 'task')
+  const [reminderSheetFor, setReminderSheetFor] = useState<'event' | 'task' | null>(null);
 
   // Bornes de la plage à charger selon la vue.
   const range = useMemo(() => {
@@ -251,6 +275,7 @@ export default function PlanningScreen() {
     setFormDate(startOfDay(forDate ?? day));
     setStartTime(nextHour());
     setEndTime(null);
+    setReminderMin(null);
     setShowDate(false);
     setShowStart(false);
     setShowEnd(false);
@@ -267,6 +292,7 @@ export default function PlanningScreen() {
     setFormDate(startOfDay(s));
     setStartTime(s);
     setEndTime(e.ends_at ? new Date(e.ends_at) : null);
+    setReminderMin(e.reminder_minutes ?? null);
     setShowDate(false);
     setShowStart(false);
     setShowEnd(false);
@@ -286,6 +312,14 @@ export default function PlanningScreen() {
       endISO = end.toISOString();
     }
     setSaving(true);
+    // Rappel : on annule l'ancien, on planifie le nouveau si demandé et à venir.
+    if (editing?.notif_id) await cancelReminder(editing.notif_id);
+    let notifId: string | null = null;
+    if (reminderMin != null) {
+      const reference = allDay ? dayAt(formDate, 9) : start;
+      const trigger = new Date(reference.getTime() - reminderMin * 60000);
+      notifId = await scheduleReminder(trigger, title.trim(), 'Rappel Quizylo');
+    }
     const payload = {
       title,
       category,
@@ -293,6 +327,8 @@ export default function PlanningScreen() {
       endsAt: endISO,
       allDay,
       description: description.trim() || null,
+      reminderMinutes: reminderMin,
+      notifId,
     };
     try {
       if (editing) await updateEvent(editing.id, payload);
@@ -318,6 +354,7 @@ export default function PlanningScreen() {
         onPress: async () => {
           setFormOpen(false);
           setEvents((prev) => prev.filter((x) => x.id !== e.id));
+          await cancelReminder(e.notif_id);
           try {
             await deleteEvent(e.id);
           } catch {
@@ -337,6 +374,7 @@ export default function PlanningScreen() {
     setTaskCategory(CATEGORIES[0].key);
     setTaskDate(startOfDay(forDate ?? day));
     setTaskDesc('');
+    setTaskReminderMin(null);
     setTaskShowDate(false);
     setTaskOpen(true);
   };
@@ -347,6 +385,7 @@ export default function PlanningScreen() {
     setTaskCategory(t.category);
     setTaskDate(startOfDay(parseYmd(t.due_date)));
     setTaskDesc(t.description ?? '');
+    setTaskReminderMin(t.reminder_minutes ?? null);
     setTaskShowDate(false);
     setTaskOpen(true);
   };
@@ -360,11 +399,19 @@ export default function PlanningScreen() {
   const saveTask = async () => {
     if (!taskTitle.trim() || !userId) return;
     setTaskSaving(true);
+    if (taskEditing?.notif_id) await cancelReminder(taskEditing.notif_id);
+    let notifId: string | null = null;
+    if (taskReminderMin != null) {
+      const trigger = new Date(dayAt(taskDate, 9).getTime() - taskReminderMin * 60000);
+      notifId = await scheduleReminder(trigger, taskTitle.trim(), 'Rappel Quizylo');
+    }
     const payload = {
       title: taskTitle,
       category: taskCategory,
       dueDate: ymd(taskDate),
       description: taskDesc.trim() || null,
+      reminderMinutes: taskReminderMin,
+      notifId,
     };
     try {
       if (taskEditing) await updateTask(taskEditing.id, payload);
@@ -390,6 +437,7 @@ export default function PlanningScreen() {
         onPress: async () => {
           setTaskOpen(false);
           setTasks((prev) => prev.filter((x) => x.id !== t.id));
+          await cancelReminder(t.notif_id);
           try {
             await deleteTask(t.id);
           } catch {
@@ -645,6 +693,14 @@ export default function PlanningScreen() {
                   })}
                 </View>
 
+                <Row label="Rappel">
+                  <Tappable onPress={() => setReminderSheetFor('event')} hitSlop={6}>
+                    <Text variant="bodyStrong" color={reminderMin != null ? Palette.primary : Palette.textSecondary}>
+                      {reminderLabel(reminderMin)}
+                    </Text>
+                  </Tappable>
+                </Row>
+
                 <TextInput
                   style={styles.descInput}
                   placeholder="Note (facultatif)"
@@ -761,6 +817,14 @@ export default function PlanningScreen() {
                   })}
                 </View>
 
+                <Row label="Rappel">
+                  <Tappable onPress={() => setReminderSheetFor('task')} hitSlop={6}>
+                    <Text variant="bodyStrong" color={taskReminderMin != null ? Palette.primary : Palette.textSecondary}>
+                      {reminderLabel(taskReminderMin)}
+                    </Text>
+                  </Tappable>
+                </Row>
+
                 <TextInput
                   style={styles.descInput}
                   placeholder="Note (facultatif)"
@@ -787,6 +851,41 @@ export default function PlanningScreen() {
               </ScrollView>
             </Pressable>
           </KeyboardAvoidingView>
+        </Pressable>
+      </Modal>
+
+      {/* Feuille : choix du rappel */}
+      <Modal
+        visible={reminderSheetFor !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setReminderSheetFor(null)}>
+        <Pressable style={styles.bottomBackdrop} onPress={() => setReminderSheetFor(null)}>
+          <Pressable style={[styles.addSheet, { paddingBottom: insets.bottom + Spacing.md }]} onPress={() => {}}>
+            <View style={styles.sheetHandle} />
+            <Text variant="heading" style={{ marginBottom: Spacing.sm }}>
+              Rappel
+            </Text>
+            {REMINDERS.map((r, i) => {
+              const selected = reminderSheetFor === 'event' ? reminderMin === r.min : taskReminderMin === r.min;
+              return (
+                <Tappable
+                  key={String(r.min)}
+                  style={[styles.addRow, i === REMINDERS.length - 1 && { borderBottomWidth: 0 }]}
+                  onPress={() => {
+                    if (reminderSheetFor === 'event') setReminderMin(r.min);
+                    else setTaskReminderMin(r.min);
+                    setReminderSheetFor(null);
+                  }}
+                  haptic={false}>
+                  <Text variant="bodyStrong" style={{ flex: 1 }}>
+                    {r.label}
+                  </Text>
+                  {selected ? <Ionicons name="checkmark" size={20} color={Palette.primary} /> : null}
+                </Tappable>
+              );
+            })}
+          </Pressable>
         </Pressable>
       </Modal>
     </Screen>
