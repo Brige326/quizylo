@@ -188,8 +188,6 @@ export type Lesson = {
   title: string;
   position: number;
   blocks: LessonBlock[];
-  /** Document riche TipTap/ProseMirror (nouvel éditeur). Null tant que non migré. */
-  content: Record<string, unknown> | null;
   created_at: string;
   updated_at: string;
 };
@@ -211,29 +209,13 @@ export async function getLesson(id: string): Promise<Lesson | null> {
     if ((error as any).code === 'PGRST116') return null;
     throw error;
   }
-  return {
-    ...(data as any),
-    blocks: (data as any).blocks ?? [],
-    content: (data as any).content ?? null,
-  } as Lesson;
+  return { ...(data as any), blocks: (data as any).blocks ?? [] } as Lesson;
 }
 
 export async function saveLessonBlocks(id: string, blocks: LessonBlock[]): Promise<void> {
   const { error } = await supabase
     .from('lessons')
     .update({ blocks, updated_at: new Date().toISOString() })
-    .eq('id', id);
-  if (error) throw error;
-}
-
-/** Enregistre le document riche (nouvel éditeur) dans lessons.content. */
-export async function saveLessonContent(
-  id: string,
-  content: Record<string, unknown>,
-): Promise<void> {
-  const { error } = await supabase
-    .from('lessons')
-    .update({ content, updated_at: new Date().toISOString() })
     .eq('id', id);
   if (error) throw error;
 }
