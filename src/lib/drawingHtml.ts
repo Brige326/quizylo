@@ -18,6 +18,8 @@ export const drawingHtml = `<!doctype html><html><head><meta charset="utf-8">
   function up(){drawing=false;}
   c.addEventListener('pointerdown',down);c.addEventListener('pointermove',move);
   c.addEventListener('pointerup',up);c.addEventListener('pointerleave',up);
+  window.__setColor=function(col){ctx.strokeStyle=col;};
+  window.__setWidth=function(w){ctx.lineWidth=w;};
   window.__clear=function(){ctx.save();ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,c.width,c.height);ctx.restore();fillBg();};
   window.__export=function(){try{var d=c.toDataURL('image/png');var m=window.ReactNativeWebView;if(m&&m.postMessage){m.postMessage(d);}else if(window.parent){window.parent.postMessage(d,'*');}}catch(e){}};
 })();

@@ -1,6 +1,6 @@
 // Modale de dessin à main levée : canvas dans une WebView (fonctionne en Expo Go).
 // À l'insertion, le canvas est exporté en PNG (data URI) renvoyé via onMessage.
-import { useRef, type ComponentType } from 'react';
+import { useRef, useState, type ComponentType } from 'react';
 import { Modal, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { WebView, type WebViewMessageEvent } from 'react-native-webview';
@@ -18,9 +18,37 @@ type Props = {
   onInsert: (dataUri: string) => void;
 };
 
+const PEN_COLORS = ['#E8ECE9', '#22E07B', '#5B8CFF', '#FF4D8D', '#F5B301'];
+const PEN_WIDTHS: { label: string; value: number }[] = [
+  { label: 'Fin', value: 2.5 },
+  { label: 'Moyen', value: 5 },
+  { label: 'Épais', value: 9 },
+];
+const ERASER_COLOR = '#101712';
+
 export function DrawingModal({ visible, onCancel, onInsert }: Props) {
   const webRef = useRef<WebView>(null);
   const insets = useSafeAreaInsets();
+  const [color, setColor] = useState(PEN_COLORS[0]);
+  const [width, setWidth] = useState(PEN_WIDTHS[0].value);
+  const [eraser, setEraser] = useState(false);
+
+  const inject = (js: string) => webRef.current?.injectJavaScript(`${js} true;`);
+
+  const pickColor = (c: string) => {
+    setColor(c);
+    setEraser(false);
+    inject(`window.__setColor(${JSON.stringify(c)});`);
+  };
+  const pickWidth = (w: number) => {
+    setWidth(w);
+    inject(`window.__setWidth(${w});`);
+  };
+  const toggleEraser = () => {
+    const on = !eraser;
+    setEraser(on);
+    inject(`window.__setColor(${JSON.stringify(on ? ERASER_COLOR : color)}); window.__setWidth(${on ? 18 : width});`);
+  };
 
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onCancel}>
@@ -55,11 +83,51 @@ export function DrawingModal({ visible, onCancel, onInsert }: Props) {
           />
         </View>
 
+        {/* Barre d'outils : couleurs, épaisseur, gomme */}
+        <View style={styles.tools}>
+          <View style={styles.toolRow}>
+            {PEN_COLORS.map((c) => (
+              <Pressable
+                key={c}
+                onPress={() => pickColor(c)}
+                style={[
+                  styles.swatch,
+                  { backgroundColor: c },
+                  !eraser && color === c && styles.swatchActive,
+                ]}
+                accessibilityLabel={`Couleur ${c}`}
+              />
+            ))}
+            <Pressable
+              onPress={toggleEraser}
+              style={[styles.eraser, eraser && styles.eraserActive]}
+              accessibilityLabel="Gomme">
+              <Text variant="small" color={eraser ? Palette.onPrimary : Palette.text}>
+                Gomme
+              </Text>
+            </Pressable>
+          </View>
+          <View style={styles.toolRow}>
+            {PEN_WIDTHS.map((w) => (
+              <Pressable
+                key={w.value}
+                onPress={() => pickWidth(w.value)}
+                style={[styles.widthBtn, !eraser && width === w.value && styles.widthBtnActive]}>
+                <Text
+                  variant="small"
+                  color={!eraser && width === w.value ? Palette.onPrimary : Palette.text}>
+                  {w.label}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        </View>
+
         <Pressable
           onPress={() => webRef.current?.injectJavaScript('window.__clear(); true;')}
           style={[styles.clearBtn, { marginBottom: insets.bottom + Spacing.md }]}>
           <Text variant="bodyStrong" color={Palette.text}>
-            Effacer
+            Tout effacer
           </Text>
         </Pressable>
       </View>
@@ -80,10 +148,36 @@ const styles = StyleSheet.create({
   web: { flex: 1, backgroundColor: '#101712' },
   clearBtn: {
     alignSelf: 'center',
-    marginTop: Spacing.md,
+    marginTop: Spacing.sm,
     paddingHorizontal: Spacing.xl,
     paddingVertical: Spacing.sm,
     borderRadius: Radius.md,
     backgroundColor: Palette.surface,
   },
+  tools: { paddingHorizontal: Spacing.lg, paddingTop: Spacing.md, gap: Spacing.sm },
+  toolRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
+  swatch: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  swatchActive: { borderColor: '#FFFFFF' },
+  eraser: {
+    paddingHorizontal: Spacing.md,
+    height: 30,
+    borderRadius: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Palette.surface,
+  },
+  eraserActive: { backgroundColor: Palette.primary },
+  widthBtn: {
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.xs,
+    borderRadius: Radius.md,
+    backgroundColor: Palette.surface,
+  },
+  widthBtnActive: { backgroundColor: Palette.primary },
 });

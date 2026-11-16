@@ -240,6 +240,11 @@ Annuler/Insérer/Effacer). Fonctionne en Expo Go (pas de module natif). Entrée
 dessinés → export PNG (data URI) capturé, rendu correct (capture), 0 erreur.
 `tsc` = 0, export web OK.
 
+**S19 — Finitions dessin** : couleurs de stylo (5), épaisseur (fin/moyen/épais) et
+gomme dans `DrawingModal` (via `__setColor`/`__setWidth` injectés). Auto-test
+navigateur : 3 traits de couleurs/épaisseurs distinctes, pixel rose = #FF4D8D exact,
+0 erreur. `tsc` = 0, export web OK.
+
 ### Limite de test (honnête)
 
 Le rendu natif dans la WebView iOS (Expo Go sur iPhone) n'est pas testable depuis
