@@ -9,7 +9,7 @@ export default function ParcoursScreen() {
   const { profile } = useAuth();
   return (
     <Screen>
-      <TopBar xp={profile?.xp ?? 0} streak={profile?.streak_days ?? 0} />
+      <TopBar xp={profile?.xp ?? 0} streak={profile?.streak_days ?? 0} showMenu={false} />
       <EmptyState
         icon="trail-sign-outline"
         eyebrow="Tes parcours"

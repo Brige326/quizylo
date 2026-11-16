@@ -666,7 +666,7 @@ export default function PlanningScreen() {
   if (isGuest || !userId) {
     return (
       <Screen>
-        <TopBar />
+        <TopBar showMenu={false} />
         <EmptyState
           icon="calendar-outline"
           eyebrow="Ton agenda"
@@ -686,6 +686,7 @@ export default function PlanningScreen() {
 
   return (
     <Screen>
+      <TopBar showMenu={false} />
       <View style={styles.header}>
         <View style={{ flex: 1 }}>
           <Text variant="title">Planning</Text>
@@ -1543,7 +1544,7 @@ const styles = StyleSheet.create({
     gap: Spacing.md,
     paddingHorizontal: Spacing.lg,
     paddingTop: Spacing.xs,
-    paddingBottom: Spacing.sm,
+    paddingBottom: Spacing.md,
   },
   addBtn: {
     width: 44,

@@ -10,6 +10,8 @@ type TopBarProps = {
   streak?: number;
   onMenu?: () => void;
   onPro?: () => void;
+  /** Affiche le bouton menu (trois traits). À réserver à l'accueil/discussion. */
+  showMenu?: boolean;
 };
 
 /** Icône menu « artistique » : trois barres arrondies, largeurs inégales et décalées. */
@@ -23,17 +25,21 @@ function MenuGlyph() {
   );
 }
 
-export function TopBar({ onMenu, onPro }: TopBarProps) {
+export function TopBar({ onMenu, onPro, showMenu = true }: TopBarProps) {
   const router = useRouter();
   return (
     <View style={styles.row}>
-      <Tappable
-        onPress={onMenu ?? (() => router.push('/menu'))}
-        hitSlop={12}
-        accessibilityLabel="Menu"
-        scaleTo={0.88}>
-        <MenuGlyph />
-      </Tappable>
+      {showMenu ? (
+        <Tappable
+          onPress={onMenu ?? (() => router.push('/menu'))}
+          hitSlop={12}
+          accessibilityLabel="Menu"
+          scaleTo={0.88}>
+          <MenuGlyph />
+        </Tappable>
+      ) : (
+        <View />
+      )}
 
       <Tappable
         onPress={onPro ?? (() => router.push('/pro'))}

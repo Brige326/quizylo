@@ -142,7 +142,7 @@ export default function MesCoursScreen() {
   if (isGuest || !userId) {
     return (
       <Screen>
-        <TopBar />
+        <TopBar showMenu={false} />
         <EmptyState
           icon="library-outline"
           eyebrow="Ta bibliothèque"
@@ -162,7 +162,7 @@ export default function MesCoursScreen() {
 
   return (
     <Screen>
-      <TopBar />
+      <TopBar showMenu={false} />
 
       {!loading && subjects.length > 0 ? (
         <View style={styles.header}>

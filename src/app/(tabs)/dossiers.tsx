@@ -10,7 +10,7 @@ export default function DossiersScreen() {
   const { profile } = useAuth();
   return (
     <Screen>
-      <TopBar xp={profile?.xp ?? 0} streak={profile?.streak_days ?? 0} />
+      <TopBar xp={profile?.xp ?? 0} streak={profile?.streak_days ?? 0} showMenu={false} />
       <EmptyState
         icon="folder-open-outline"
         eyebrow="Ton espace de révision IA"
