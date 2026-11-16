@@ -25,11 +25,11 @@ const ICONS: Record<string, { icon: IconRenderer; center?: boolean }> = {
     icon: (c, s) => <Feather name="target" size={s} color={c} />,
     center: true,
   },
-  recherche: {
-    icon: (c, s) => <Ionicons name="search-outline" size={s} color={c} />,
+  cours: {
+    icon: (c, s) => <Ionicons name="library-outline" size={s} color={c} />,
   },
-  classement: {
-    icon: (c, s) => <Ionicons name="trophy-outline" size={s} color={c} />,
+  planning: {
+    icon: (c, s) => <Ionicons name="calendar-outline" size={s} color={c} />,
   },
 };
 

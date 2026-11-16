@@ -14,8 +14,8 @@ export default function TabsLayout() {
       <Tabs.Screen name="index" options={{ title: 'Accueil' }} />
       <Tabs.Screen name="dossiers" options={{ title: 'Dossiers' }} />
       <Tabs.Screen name="parcours" options={{ title: 'Parcours' }} />
-      <Tabs.Screen name="recherche" options={{ title: 'Recherche' }} />
-      <Tabs.Screen name="classement" options={{ title: 'Ligue' }} />
+      <Tabs.Screen name="cours" options={{ title: 'Mes cours' }} />
+      <Tabs.Screen name="planning" options={{ title: 'Planning' }} />
     </Tabs>
   );
 }
