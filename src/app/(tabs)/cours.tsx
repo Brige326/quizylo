@@ -8,6 +8,7 @@ import {
   KeyboardAvoidingView,
   Modal,
   Platform,
+  Pressable,
   StyleSheet,
   TextInput,
   View,
@@ -163,6 +164,15 @@ export default function MesCoursScreen() {
     <Screen>
       <TopBar showMenu={false} />
 
+      {/* ⚠️ TEMPORAIRE — Séance 2 (Phase 0). Accès au prototype d'éditeur TenTap.
+          À retirer une fois la décision prise. */}
+      <Pressable style={styles.labBanner} onPress={() => router.push('/lab/editor')}>
+        <Ionicons name="flask-outline" size={18} color={Palette.onPrimary} />
+        <Text variant="small" color={Palette.onPrimary} style={{ fontWeight: '700' }}>
+          Test éditeur (Séance 2)
+        </Text>
+      </Pressable>
+
       {!loading && subjects.length > 0 ? (
         <View style={styles.header}>
           <View style={{ flex: 1 }}>
@@ -306,6 +316,17 @@ function SubjectCard({
 }
 
 const styles = StyleSheet.create({
+  labBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginHorizontal: Spacing.lg,
+    marginBottom: Spacing.sm,
+    paddingVertical: 10,
+    borderRadius: Radius.md,
+    backgroundColor: Palette.primary,
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
