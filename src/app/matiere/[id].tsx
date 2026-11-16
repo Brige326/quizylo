@@ -172,9 +172,14 @@ export default function MatiereDetailScreen() {
           <Ionicons name="chevron-back" size={26} color={Palette.text} />
         </Tappable>
         <View style={styles.headerTitle}>
-          <Text variant="title" numberOfLines={1} style={{ flex: 1 }}>
+          <Text variant="title" numberOfLines={1}>
             {subjectName}
           </Text>
+          {!loading && chapters.length > 0 ? (
+            <Text variant="small" color={Palette.textSecondary}>
+              Les chapitres de cette matière
+            </Text>
+          ) : null}
         </View>
         <Tappable
           style={[styles.addBtn, { backgroundColor: color }]}
@@ -214,7 +219,6 @@ export default function MatiereDetailScreen() {
               onLongPress={() => onOptions(item)}
               delayLongPress={300}
               haptic={false}>
-              <View style={[styles.rowAccent, { backgroundColor: color }]} />
               <Text variant="heading" numberOfLines={2} style={{ flex: 1 }}>
                 {item.name}
               </Text>
@@ -290,7 +294,7 @@ const styles = StyleSheet.create({
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: Palette.border,
   },
-  headerTitle: { flex: 1, flexDirection: 'row', alignItems: 'center' },
+  headerTitle: { flex: 1, gap: 2 },
   addBtn: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: Spacing.xl },
   list: { paddingHorizontal: Spacing.lg, paddingVertical: Spacing.sm, gap: Spacing.sm },
@@ -300,13 +304,11 @@ const styles = StyleSheet.create({
     gap: Spacing.md,
     backgroundColor: Palette.surface,
     borderRadius: Radius.lg,
-    paddingRight: Spacing.md,
-    paddingLeft: Spacing.md + 6,
+    paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.lg,
     minHeight: 76,
     overflow: 'hidden',
   },
-  rowAccent: { position: 'absolute', left: 0, top: 0, bottom: 0, width: 4 },
   backdrop: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.6)',

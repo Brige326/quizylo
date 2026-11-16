@@ -198,11 +198,10 @@ export default function ChapitreLeconsScreen() {
               onLongPress={() => onOptions(item)}
               delayLongPress={300}
               haptic={false}>
-              <View style={[styles.rowAccent, { backgroundColor: color }]} />
               <View style={styles.rowIcon}>
                 <Ionicons name="document-text-outline" size={20} color={Palette.textSecondary} />
               </View>
-              <Text variant="bodyStrong" numberOfLines={2} style={{ flex: 1 }}>
+              <Text variant="bodyStrong" numberOfLines={3} style={{ flex: 1 }}>
                 {item.title}
               </Text>
               <Pressable hitSlop={10} onPress={() => onOptions(item)} accessibilityLabel="Options">
@@ -272,13 +271,11 @@ const styles = StyleSheet.create({
     gap: Spacing.md,
     backgroundColor: Palette.surface,
     borderRadius: Radius.lg,
-    paddingRight: Spacing.md,
-    paddingLeft: Spacing.md + 6,
-    paddingVertical: Spacing.lg,
-    minHeight: 72,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.lg + 2,
+    minHeight: 84,
     overflow: 'hidden',
   },
-  rowAccent: { position: 'absolute', left: 0, top: 0, bottom: 0, width: 4 },
   rowIcon: {
     width: 40,
     height: 40,
