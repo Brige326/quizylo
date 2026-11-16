@@ -287,7 +287,6 @@ function SubjectCard({
   onOptions: () => void;
 }) {
   const count = subject.chapter_count ?? 0;
-  const initial = subject.name.trim().charAt(0).toUpperCase() || '?';
   const tile = readableTileColor(subject.color);
   return (
     <Tappable
@@ -296,17 +295,12 @@ function SubjectCard({
       onLongPress={onOptions}
       delayLongPress={300}
       haptic={false}>
-      <View style={styles.cardBadge}>
-        <Text style={styles.cardBadgeText}>{initial}</Text>
-      </View>
-      <View style={styles.cardBody}>
-        <Text variant="bodyStrong" numberOfLines={1} style={styles.cardName}>
-          {subject.name}
-        </Text>
-        <Text variant="small" style={styles.cardMeta}>
-          {count === 0 ? 'Aucun chapitre' : `${count} chapitre${count > 1 ? 's' : ''}`}
-        </Text>
-      </View>
+      <Text variant="title" numberOfLines={2} style={styles.cardName}>
+        {subject.name}
+      </Text>
+      <Text variant="small" style={styles.cardMeta}>
+        {count === 0 ? 'Aucun chapitre' : `${count} chapitre${count > 1 ? 's' : ''}`}
+      </Text>
     </Tappable>
   );
 }
@@ -351,24 +345,14 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: Spacing.xl },
   list: { paddingHorizontal: Spacing.lg, paddingBottom: Spacing.xl, gap: Spacing.sm },
   card: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.md,
     borderRadius: Radius.lg,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.md + 2,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.lg + 2,
+    gap: 4,
+    minHeight: 92,
+    justifyContent: 'center',
     overflow: 'hidden',
   },
-  cardBadge: {
-    width: 44,
-    height: 44,
-    borderRadius: Radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.22)',
-  },
-  cardBadgeText: { ...Type.heading, color: '#FFFFFF' },
-  cardBody: { flex: 1, gap: 2 },
   cardName: { color: '#FFFFFF' },
   cardMeta: { color: 'rgba(255,255,255,0.85)' },
   // Page plein écran
