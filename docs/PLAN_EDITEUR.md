@@ -208,4 +208,11 @@ tableau… ». Auto-test navigateur sur le bundle de l'app : insérer [3,9] → 
 [4,12] → +colonne [4,16] → -ligne [3,12] → -colonne [3,9] → supprimer [0,0], 0 erreur.
 `tsc` = 0.
 
-Reste : test appareil ; puis **maths** (même pipeline, extension KaTeX en plus).
+**S14 — Mathématiques (KaTeX)** : extension `@tiptap/extension-mathematics` ajoutée
+au bundle ; **KaTeX inliné** (CSS + 20 polices woff2 en base64) dans le build pour un
+éditeur auto-contenu ; `insertMath(latex, block)` via `injectJS`
+(`insertInlineMath`/`insertBlockMath`) ; invite LaTeX (iOS) « Insérer une formule ».
+Auto-test navigateur : formules inline + bloc **rendues par KaTeX** avec les bonnes
+polices (exposants, intégrale, fraction — capture), 0 erreur. `tsc` = 0, export web OK.
+Bundle `editorHtml` ~1,5 Mo. Reste : saisie de formule sur Android (modale custom),
+test appareil ; plus tard chimie/graphiques/polices/dessin (mêmes mécaniques).

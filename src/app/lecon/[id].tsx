@@ -323,10 +323,33 @@ export default function LeconScreen() {
     ]);
   };
 
+  const insertMathPrompt = () => {
+    if (Platform.OS !== 'ios') {
+      Alert.alert('Formule', 'La saisie de formule sera disponible sur Android prochainement.');
+      return;
+    }
+    Alert.prompt(
+      'Insérer une formule',
+      'Écris la formule en LaTeX (ex. x^2 + 1, \\frac{a}{b}).',
+      [
+        { text: 'Annuler', style: 'cancel' },
+        {
+          text: 'Insérer',
+          onPress: (txt?: string) => {
+            const latex = (txt ?? '').trim();
+            if (latex) richRef.current?.insertMath(latex, false);
+          },
+        },
+      ],
+      'plain-text',
+    );
+  };
+
   const attachMenuRich = () => {
     Alert.alert('Ajouter à la leçon', undefined, [
       { text: 'Insérer un tableau', onPress: () => richRef.current?.insertTable() },
       { text: 'Modifier le tableau…', onPress: tableMenu },
+      { text: 'Insérer une formule (maths)', onPress: insertMathPrompt },
       { text: 'Prendre une photo', onPress: takePhotoInline },
       { text: 'Importer une image', onPress: pickImageInline },
       { text: 'Importer un PDF', onPress: pickPdf },

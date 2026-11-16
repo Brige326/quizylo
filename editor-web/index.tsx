@@ -8,12 +8,19 @@ import { Table } from '@tiptap/extension-table';
 import { TableRow } from '@tiptap/extension-table-row';
 import { TableHeader } from '@tiptap/extension-table-header';
 import { TableCell } from '@tiptap/extension-table-cell';
+import { Mathematics } from '@tiptap/extension-mathematics';
 
 function EditorWeb() {
   const editor = useTenTap({
     bridges: TenTapStartKit,
     tiptapOptions: {
-      extensions: [Table.configure({ resizable: false }), TableRow, TableHeader, TableCell],
+      extensions: [
+        Table.configure({ resizable: false }),
+        TableRow,
+        TableHeader,
+        TableCell,
+        Mathematics,
+      ],
     },
   });
   // Expose l'éditeur pour piloter les tableaux depuis le natif via injectJS.

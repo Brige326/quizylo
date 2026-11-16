@@ -46,6 +46,8 @@ export type LessonRichEditorHandle = {
   insertTable: () => void;
   /** Modifie le tableau contenant le curseur (ligne/colonne/suppression). */
   tableAction: (action: TableAction) => void;
+  /** Insère une formule mathématique (LaTeX) rendue par KaTeX. */
+  insertMath: (latex: string, block?: boolean) => void;
 };
 
 type Props = {
@@ -139,6 +141,15 @@ export const LessonRichEditor = forwardRef<LessonRichEditorHandle, Props>(functi
       tableAction: (action: TableAction) => {
         editor.injectJS(
           `window.__quizyloEditor && window.__quizyloEditor.chain().focus().${action}().run();`,
+        );
+        scheduleSave();
+      },
+      insertMath: (latex: string, block?: boolean) => {
+        const cmd = block ? 'insertBlockMath' : 'insertInlineMath';
+        editor.injectJS(
+          `window.__quizyloEditor && window.__quizyloEditor.chain().focus().${cmd}({latex: ${JSON.stringify(
+            latex,
+          )}}).run();`,
         );
         scheduleSave();
       },
