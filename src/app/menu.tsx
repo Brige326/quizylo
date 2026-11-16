@@ -114,16 +114,16 @@ export default function MenuScreen() {
     });
   };
 
+  // On signale à l'accueil (déjà monté dessous) quoi afficher, PUIS on referme simplement le menu.
+  // On ne renavigue pas vers /(tabs) : cela reconstruisait l'accueil et perdait la discussion chargée.
   const onNewChat = () => {
-    // Accueil vierge ; on signale, on referme en douceur, puis on atterrit sur l'Accueil.
     startNewChat();
-    dismissThen(() => router.navigate('/(tabs)'));
+    close();
   };
 
   const onOpenConversation = (id: string) => {
-    // Rouvre la discussion à l'identique ; on signale, on referme, puis on atterrit sur l'Accueil.
     openConversation(id);
-    dismissThen(() => router.navigate('/(tabs)'));
+    close();
   };
 
   const onDeleteConversation = (id: string, title: string) => {
@@ -316,7 +316,7 @@ function ConversationRow({
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  swipeContainer: { width: '100%' },
+  swipeContainer: { width: '100%', overflow: 'hidden' },
   swipeChild: { width: '100%' },
   convRow: {
     width: '100%',

@@ -1,13 +1,13 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { Alert, ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Mascot } from '@/components/ui/Mascot';
 import { Screen } from '@/components/ui/Screen';
 import { Tappable } from '@/components/ui/Tappable';
 import { Text } from '@/components/ui/Text';
-import { Palette, Radius, Spacing } from '@/constants/theme';
+import { Palette, Spacing, Type } from '@/constants/theme';
 import { useI18n } from '@/lib/i18n';
 
 export default function AboutScreen() {
@@ -15,8 +15,6 @@ export default function AboutScreen() {
   const insets = useSafeAreaInsets();
   const { t } = useI18n();
   const back = () => (router.canGoBack() ? router.back() : router.replace('/settings'));
-  const soon = (label: string) =>
-    Alert.alert(label, 'Ce document sera publié prochainement.');
 
   return (
     <Screen>
@@ -44,30 +42,22 @@ export default function AboutScreen() {
           </Text>
         </View>
 
-        <View style={styles.card}>
-          <Tappable
-            style={[styles.row, styles.rowBorder]}
-            onPress={() => soon("Conditions d'utilisation")}
-            haptic={false}>
-            <Ionicons name="document-text-outline" size={22} color={Palette.textSecondary} />
-            <Text variant="bodyStrong" style={{ flex: 1 }}>
-              Conditions d'utilisation
-            </Text>
-            <Ionicons name="chevron-forward" size={18} color={Palette.textMuted} />
-          </Tappable>
-          <Tappable
-            style={styles.row}
-            onPress={() => soon('Politique de confidentialité')}
-            haptic={false}>
-            <Ionicons name="shield-outline" size={22} color={Palette.textSecondary} />
-            <Text variant="bodyStrong" style={{ flex: 1 }}>
-              Politique de confidentialité
-            </Text>
-            <Ionicons name="chevron-forward" size={18} color={Palette.textMuted} />
-          </Tappable>
-        </View>
+        <Text style={styles.paragraph}>
+          Quizylo est ton compagnon de révision propulsé par l'intelligence artificielle. Pose une
+          question, envoie une photo d'un exercice ou lance un quiz : Quizylo t'aide à comprendre tes
+          cours, à t'entraîner et à préparer tes examens, à ton rythme.
+        </Text>
+        <Text style={styles.paragraph}>
+          Résoudre un problème, créer un quiz ou un examen blanc, résumer un chapitre, te faire des
+          aides-mémoire — tout est pensé pour rendre tes révisions plus simples, plus claires et plus
+          efficaces.
+        </Text>
+        <Text style={styles.paragraph}>
+          Notre objectif est simple : t'accompagner vers la réussite, où que tu sois et dans ta
+          langue.
+        </Text>
 
-        <Text variant="caption" color={Palette.textMuted} center style={{ marginTop: Spacing.xl }}>
+        <Text variant="caption" color={Palette.textMuted} center style={{ marginTop: Spacing.lg }}>
           Fait avec soin pour t'aider à réussir.
         </Text>
       </ScrollView>
@@ -94,7 +84,10 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     marginBottom: Spacing.md,
   },
-  card: { backgroundColor: Palette.surface, borderRadius: Radius.lg, paddingHorizontal: Spacing.lg },
-  row: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, paddingVertical: Spacing.md + 2 },
-  rowBorder: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: Palette.border },
+  paragraph: {
+    ...Type.body,
+    color: Palette.textSecondary,
+    lineHeight: 23,
+    marginBottom: Spacing.md,
+  },
 });

@@ -20,7 +20,10 @@ export type LangCode =
   | 'fi'
   | 'el'
   | 'ko'
-  | 'tr';
+  | 'tr'
+  | 'ru'
+  | 'pl'
+  | 'nl';
 
 export const LANGUAGES: { code: LangCode; label: string }[] = [
   { code: 'fr', label: 'Français' },
@@ -37,6 +40,9 @@ export const LANGUAGES: { code: LangCode; label: string }[] = [
   { code: 'el', label: 'Ελληνικά' },
   { code: 'ko', label: '한국어' },
   { code: 'tr', label: 'Türkçe' },
+  { code: 'ru', label: 'Русский' },
+  { code: 'pl', label: 'Polski' },
+  { code: 'nl', label: 'Nederlands' },
 ];
 
 type Dict = Record<string, string>;
@@ -58,6 +64,8 @@ const fr: Dict = {
   'settings.privacyHelp': 'Confidentialité & aide',
   'settings.dataProtection': 'Protection des données',
   'settings.support': "Contacter l'assistance",
+  'settings.terms': "Conditions d'utilisation",
+  'settings.privacyPolicy': 'Politique de confidentialité',
   'settings.about': 'À propos',
   'settings.signOut': 'Se déconnecter',
   'settings.signIn': 'Se connecter',
@@ -89,6 +97,8 @@ const en: Dict = {
   'settings.privacyHelp': 'Privacy & help',
   'settings.dataProtection': 'Data protection',
   'settings.support': 'Contact support',
+  'settings.terms': 'Terms of Use',
+  'settings.privacyPolicy': 'Privacy Policy',
   'settings.about': 'About',
   'settings.signOut': 'Sign out',
   'settings.signIn': 'Sign in',
@@ -475,6 +485,105 @@ const tr: Dict = {
   'common.delete': 'Sil',
 };
 
+const ru: Dict = {
+  'settings.title': 'Настройки',
+  'settings.account': 'Аккаунт',
+  'settings.myInfo': 'Мои данные',
+  'settings.subscription': 'Подписка',
+  'settings.free': 'Бесплатно',
+  'settings.aiDiscussions': 'ИИ и чаты',
+  'settings.aiMemory': 'Память ИИ',
+  'settings.deleteAll': 'Удалить все чаты',
+  'settings.deleteAllConfirm': 'Это навсегда удалит все ваши чаты.',
+  'settings.deleteAllDone': 'Все ваши чаты удалены.',
+  'settings.prefs': 'Предпочтения',
+  'settings.language': 'Язык',
+  'settings.notifications': 'Уведомления',
+  'settings.privacyHelp': 'Конфиденциальность и помощь',
+  'settings.dataProtection': 'Защита данных',
+  'settings.support': 'Связаться с поддержкой',
+  'settings.terms': 'Условия использования',
+  'settings.privacyPolicy': 'Политика конфиденциальности',
+  'settings.about': 'О приложении',
+  'settings.signOut': 'Выйти',
+  'settings.signIn': 'Войти',
+  'settings.notConnected': 'Вход не выполнен',
+  'language.title': 'Язык',
+  'language.subtitle': 'Выберите язык приложения.',
+  'home.hero': 'О чём твой следующий экзамен?',
+  'home.placeholder': 'Спроси Quizylo…',
+  'menu.previous': 'Предыдущие чаты',
+  'menu.newChat': 'Новый чат',
+  'common.cancel': 'Отмена',
+  'common.delete': 'Удалить',
+};
+
+const pl: Dict = {
+  'settings.title': 'Ustawienia',
+  'settings.account': 'Konto',
+  'settings.myInfo': 'Moje informacje',
+  'settings.subscription': 'Subskrypcja',
+  'settings.free': 'Za darmo',
+  'settings.aiDiscussions': 'AI i czaty',
+  'settings.aiMemory': 'Pamięć AI',
+  'settings.deleteAll': 'Usuń wszystkie czaty',
+  'settings.deleteAllConfirm': 'To trwale usunie wszystkie Twoje czaty.',
+  'settings.deleteAllDone': 'Wszystkie Twoje czaty zostały usunięte.',
+  'settings.prefs': 'Preferencje',
+  'settings.language': 'Język',
+  'settings.notifications': 'Powiadomienia',
+  'settings.privacyHelp': 'Prywatność i pomoc',
+  'settings.dataProtection': 'Ochrona danych',
+  'settings.support': 'Kontakt z pomocą',
+  'settings.terms': 'Warunki korzystania',
+  'settings.privacyPolicy': 'Polityka prywatności',
+  'settings.about': 'O aplikacji',
+  'settings.signOut': 'Wyloguj się',
+  'settings.signIn': 'Zaloguj się',
+  'settings.notConnected': 'Niezalogowany',
+  'language.title': 'Język',
+  'language.subtitle': 'Wybierz język aplikacji.',
+  'home.hero': 'Jaki jest temat Twojego następnego egzaminu?',
+  'home.placeholder': 'Zapytaj Quizylo…',
+  'menu.previous': 'Poprzednie czaty',
+  'menu.newChat': 'Nowy czat',
+  'common.cancel': 'Anuluj',
+  'common.delete': 'Usuń',
+};
+
+const nl: Dict = {
+  'settings.title': 'Instellingen',
+  'settings.account': 'Account',
+  'settings.myInfo': 'Mijn gegevens',
+  'settings.subscription': 'Abonnement',
+  'settings.free': 'Gratis',
+  'settings.aiDiscussions': 'AI en chats',
+  'settings.aiMemory': 'AI-geheugen',
+  'settings.deleteAll': 'Alle chats verwijderen',
+  'settings.deleteAllConfirm': 'Hiermee worden al je chats definitief verwijderd.',
+  'settings.deleteAllDone': 'Al je chats zijn verwijderd.',
+  'settings.prefs': 'Voorkeuren',
+  'settings.language': 'Taal',
+  'settings.notifications': 'Meldingen',
+  'settings.privacyHelp': 'Privacy en hulp',
+  'settings.dataProtection': 'Gegevensbescherming',
+  'settings.support': 'Contact met support',
+  'settings.terms': 'Gebruiksvoorwaarden',
+  'settings.privacyPolicy': 'Privacybeleid',
+  'settings.about': 'Over',
+  'settings.signOut': 'Uitloggen',
+  'settings.signIn': 'Inloggen',
+  'settings.notConnected': 'Niet ingelogd',
+  'language.title': 'Taal',
+  'language.subtitle': 'Kies de taal van de app.',
+  'home.hero': 'Waar gaat je volgende examen over?',
+  'home.placeholder': 'Vraag Quizylo…',
+  'menu.previous': 'Vorige chats',
+  'menu.newChat': 'Nieuwe chat',
+  'common.cancel': 'Annuleren',
+  'common.delete': 'Verwijderen',
+};
+
 const translations: Record<LangCode, Dict> = {
   fr,
   en,
@@ -490,6 +599,9 @@ const translations: Record<LangCode, Dict> = {
   el,
   ko,
   tr,
+  ru,
+  pl,
+  nl,
 };
 
 const STORAGE_KEY = 'quizylo.lang';

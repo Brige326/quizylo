@@ -149,14 +149,19 @@ export default function SettingsScreen() {
             onPress={() => router.push('/privacy')}
           />
           <Row
+            icon="document-text-outline"
+            label={t('settings.terms')}
+            onPress={() => soon(t('settings.terms'))}
+          />
+          <Row
+            icon="shield-outline"
+            label={t('settings.privacyPolicy')}
+            onPress={() => soon(t('settings.privacyPolicy'))}
+          />
+          <Row
             icon="help-buoy-outline"
             label={t('settings.support')}
             onPress={() => router.push('/support')}
-          />
-          <Row
-            icon="information-circle-outline"
-            label={t('settings.about')}
-            onPress={() => router.push('/about')}
           />
         </Section>
 
@@ -165,6 +170,14 @@ export default function SettingsScreen() {
             <Row icon="log-out-outline" label={t('settings.signOut')} danger onPress={onSignOut} />
           </Section>
         ) : null}
+
+        <Section>
+          <Row
+            icon="information-circle-outline"
+            label={t('settings.about')}
+            onPress={() => router.push('/about')}
+          />
+        </Section>
 
         <Text variant="caption" color={Palette.textMuted} center style={{ marginTop: Spacing.lg }}>
           Quizylo · Version 1.0.0
