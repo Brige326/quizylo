@@ -192,12 +192,18 @@ export default function MatiereDetailScreen() {
         />
       )}
 
-      {/* Modale créer / renommer un chapitre */}
-      <Modal visible={modalOpen} transparent animationType="fade" onRequestClose={closeModal}>
-        <Pressable style={styles.backdrop} onPress={closeModal}>
-          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-            <Pressable style={styles.sheet} onPress={() => {}}>
-              <Text variant="heading">{editing ? 'Renommer le chapitre' : 'Nouveau chapitre'}</Text>
+      {/* Page : créer / renommer un chapitre */}
+      <Modal visible={modalOpen} animationType="slide" onRequestClose={closeModal}>
+        <View style={styles.page}>
+          <View style={[styles.pageHeader, { paddingTop: insets.top + Spacing.xs }]}>
+            <Tappable onPress={closeModal} hitSlop={12} scaleTo={0.9} accessibilityLabel="Fermer">
+              <Ionicons name="close" size={26} color={Palette.text} />
+            </Tappable>
+            <Text variant="heading">{editing ? 'Renommer le chapitre' : 'Nouveau chapitre'}</Text>
+            <View style={{ width: 26 }} />
+          </View>
+          <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+            <View style={styles.pageBody}>
               <TextInput
                 style={styles.modalInput}
                 placeholder="Ex. Les probabilités"
@@ -209,22 +215,17 @@ export default function MatiereDetailScreen() {
                 onSubmitEditing={onSave}
                 maxLength={80}
               />
-              <View style={styles.modalActions}>
-                <View style={{ flex: 1 }}>
-                  <Button label="Annuler" variant="ghost" onPress={closeModal} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Button
-                    label={editing ? 'Enregistrer' : 'Créer'}
-                    onPress={onSave}
-                    loading={saving}
-                    disabled={!name.trim() || saving}
-                  />
-                </View>
-              </View>
-            </Pressable>
+            </View>
+            <View style={[styles.pageFooter, { paddingBottom: insets.bottom + Spacing.md }]}>
+              <Button
+                label={editing ? 'Enregistrer' : 'Créer'}
+                onPress={onSave}
+                loading={saving}
+                disabled={!name.trim() || saving}
+              />
+            </View>
           </KeyboardAvoidingView>
-        </Pressable>
+        </View>
       </Modal>
     </Screen>
   );
@@ -237,6 +238,23 @@ const styles = StyleSheet.create({
     gap: Spacing.md,
     paddingHorizontal: Spacing.lg,
     paddingBottom: Spacing.sm,
+  },
+  page: { flex: 1, backgroundColor: Palette.background },
+  pageHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: Spacing.lg,
+    paddingBottom: Spacing.sm,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: Palette.border,
+  },
+  pageBody: { flex: 1, paddingHorizontal: Spacing.lg, paddingTop: Spacing.md },
+  pageFooter: {
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.md,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: Palette.border,
   },
   headerTitle: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
   dot: { width: 12, height: 12, borderRadius: 6 },

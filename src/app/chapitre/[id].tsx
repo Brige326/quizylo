@@ -616,17 +616,23 @@ export default function ChapitreDocumentsScreen() {
         </Pressable>
       </Modal>
 
-      {/* Modale : contexte de génération */}
-      <Modal visible={genKind !== null} transparent animationType="fade" onRequestClose={closeGen}>
-        <Pressable style={styles.centerBackdrop} onPress={closeGen}>
-          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-            <Pressable style={styles.sheet} onPress={() => {}}>
-              <Text variant="heading">{genKind ? GEN_LABEL[genKind] : ''}</Text>
-              <Text variant="small" color={Palette.textSecondary}>
+      {/* Page : contexte de génération */}
+      <Modal visible={genKind !== null} animationType="slide" onRequestClose={closeGen}>
+        <View style={styles.page}>
+          <View style={[styles.pageHeader, { paddingTop: insets.top + Spacing.xs }]}>
+            <Tappable onPress={closeGen} hitSlop={12} scaleTo={0.9} accessibilityLabel="Fermer">
+              <Ionicons name="close" size={26} color={Palette.text} />
+            </Tappable>
+            <Text variant="heading">{genKind ? GEN_LABEL[genKind] : ''}</Text>
+            <View style={{ width: 26 }} />
+          </View>
+          <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+            <View style={styles.pageBody}>
+              <Text variant="small" color={Palette.textSecondary} style={{ marginBottom: Spacing.sm }}>
                 Sur quel sujet ? Tu peux coller ton cours ou préciser le thème.
               </Text>
               <TextInput
-                style={styles.genInput}
+                style={styles.genInputFull}
                 placeholder="Ex. Les probabilités : définitions, formules, exemples…"
                 placeholderTextColor={Palette.textMuted}
                 value={genContext}
@@ -634,17 +640,12 @@ export default function ChapitreDocumentsScreen() {
                 multiline
                 textAlignVertical="top"
               />
-              <View style={styles.modalActions}>
-                <View style={{ flex: 1 }}>
-                  <Button label="Annuler" variant="ghost" onPress={closeGen} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Button label="Générer" onPress={runGenerate} disabled={!genContext.trim() || generating} />
-                </View>
-              </View>
-            </Pressable>
+            </View>
+            <View style={[styles.pageFooter, { paddingBottom: insets.bottom + Spacing.md }]}>
+              <Button label="Générer" onPress={runGenerate} disabled={!genContext.trim() || generating} />
+            </View>
           </KeyboardAvoidingView>
-        </Pressable>
+        </View>
       </Modal>
 
       {/* Feuille d'ajout */}
@@ -844,6 +845,31 @@ const styles = StyleSheet.create({
     padding: Spacing.md,
     minHeight: 120,
     marginVertical: Spacing.sm,
+  },
+  page: { flex: 1, backgroundColor: Palette.background },
+  pageHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: Spacing.lg,
+    paddingBottom: Spacing.sm,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: Palette.border,
+  },
+  pageBody: { flex: 1, paddingHorizontal: Spacing.lg, paddingTop: Spacing.md },
+  pageFooter: {
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.md,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: Palette.border,
+  },
+  genInputFull: {
+    flex: 1,
+    color: Palette.text,
+    ...Type.body,
+    backgroundColor: Palette.surface,
+    borderRadius: Radius.md,
+    padding: Spacing.md,
   },
   headerTitle: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
   dot: { width: 12, height: 12, borderRadius: 6 },

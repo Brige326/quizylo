@@ -13,6 +13,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -35,6 +36,7 @@ import {
 export default function MesCoursScreen() {
   const { session, isGuest, exitGuest } = useAuth();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const userId = session?.user?.id;
 
   const [subjects, setSubjects] = useState<Subject[]>([]);
@@ -162,27 +164,25 @@ export default function MesCoursScreen() {
     <Screen>
       <TopBar />
 
-      <View style={styles.header}>
-        <View style={{ flex: 1 }}>
-          <Text variant="title">Mes cours</Text>
-          <Text variant="small" color={Palette.textSecondary}>
-            {subjects.length === 0
-              ? 'Ta bibliothèque personnelle'
-              : `${subjects.length} matière${subjects.length > 1 ? 's' : ''}`}
-          </Text>
-        </View>
-        {subjects.length > 0 ? (
+      {!loading && subjects.length > 0 ? (
+        <View style={styles.header}>
+          <View style={{ flex: 1 }}>
+            <Text variant="title">Mes cours</Text>
+            <Text variant="small" color={Palette.textSecondary}>
+              {`${subjects.length} matière${subjects.length > 1 ? 's' : ''}`}
+            </Text>
+          </View>
           <Tappable
             style={styles.searchBtn}
             onPress={() => router.push('/recherche-cours')}
             accessibilityLabel="Rechercher">
             <Ionicons name="search" size={22} color={Palette.text} />
           </Tappable>
-        ) : null}
-        <Tappable style={styles.addBtn} onPress={openCreate} accessibilityLabel="Ajouter une matière">
-          <Ionicons name="add" size={26} color={Palette.onPrimary} />
-        </Tappable>
-      </View>
+          <Tappable style={styles.addBtn} onPress={openCreate} accessibilityLabel="Ajouter une matière">
+            <Ionicons name="add" size={26} color={Palette.onPrimary} />
+          </Tappable>
+        </View>
+      ) : null}
 
       {loading ? (
         <View style={styles.center}>
@@ -219,13 +219,18 @@ export default function MesCoursScreen() {
         />
       )}
 
-      {/* Modale création / renommage */}
-      <Modal visible={modalOpen} transparent animationType="fade" onRequestClose={closeModal}>
-        <Pressable style={styles.backdrop} onPress={closeModal}>
-          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-            <Pressable style={styles.sheet} onPress={() => {}}>
-              <Text variant="heading">{editing ? 'Renommer la matière' : 'Nouvelle matière'}</Text>
-
+      {/* Page : création / renommage d'une matière */}
+      <Modal visible={modalOpen} animationType="slide" onRequestClose={closeModal}>
+        <View style={styles.page}>
+          <View style={[styles.pageHeader, { paddingTop: insets.top + Spacing.xs }]}>
+            <Tappable onPress={closeModal} hitSlop={12} scaleTo={0.9} accessibilityLabel="Fermer">
+              <Ionicons name="close" size={26} color={Palette.text} />
+            </Tappable>
+            <Text variant="heading">{editing ? 'Renommer la matière' : 'Nouvelle matière'}</Text>
+            <View style={{ width: 26 }} />
+          </View>
+          <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+            <View style={styles.pageBody}>
               <TextInput
                 style={styles.modalInput}
                 placeholder="Ex. Mathématiques"
@@ -238,7 +243,7 @@ export default function MesCoursScreen() {
                 maxLength={60}
               />
 
-              <Text variant="small" color={Palette.textSecondary} style={{ marginBottom: Spacing.xs }}>
+              <Text variant="small" color={Palette.textSecondary} style={{ marginBottom: Spacing.xs, marginTop: Spacing.md }}>
                 Couleur
               </Text>
               <View style={styles.colorRow}>
@@ -259,23 +264,17 @@ export default function MesCoursScreen() {
                   </Tappable>
                 ))}
               </View>
-
-              <View style={styles.modalActions}>
-                <View style={{ flex: 1 }}>
-                  <Button label="Annuler" variant="ghost" onPress={closeModal} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Button
-                    label={editing ? 'Enregistrer' : 'Créer'}
-                    onPress={onSave}
-                    loading={saving}
-                    disabled={!name.trim() || saving}
-                  />
-                </View>
-              </View>
-            </Pressable>
+            </View>
+            <View style={[styles.pageFooter, { paddingBottom: insets.bottom + Spacing.md }]}>
+              <Button
+                label={editing ? 'Enregistrer' : 'Créer'}
+                onPress={onSave}
+                loading={saving}
+                disabled={!name.trim() || saving}
+              />
+            </View>
           </KeyboardAvoidingView>
-        </Pressable>
+        </View>
       </Modal>
     </Screen>
   );
@@ -367,6 +366,24 @@ const styles = StyleSheet.create({
   },
   cardName: { marginTop: Spacing.sm },
   cardBar: { height: 4, borderRadius: 2, marginTop: Spacing.md },
+  // Page plein écran
+  page: { flex: 1, backgroundColor: Palette.background },
+  pageHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: Spacing.lg,
+    paddingBottom: Spacing.sm,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: Palette.border,
+  },
+  pageBody: { flex: 1, paddingHorizontal: Spacing.lg, paddingTop: Spacing.md },
+  pageFooter: {
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.md,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: Palette.border,
+  },
   // Modale
   backdrop: {
     flex: 1,
