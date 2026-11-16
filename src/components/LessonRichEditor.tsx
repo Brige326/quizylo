@@ -24,12 +24,19 @@ import {
   View,
 } from 'react-native';
 
+import { customEditorHtml } from '@/editor-web/editorHtml';
 import { LESSON_TEXT_COLORS, saveLessonContent, type LessonBlock } from '@/lib/courses';
 import { blocksToDoc, isEmptyDoc, type TipTapDoc } from '@/lib/lessonContent';
+
+// Éditeur web sur-mesure (avec tableaux). Mettre à false pour revenir au moteur
+// TenTap par défaut (sans tableaux) en cas de souci sur appareil.
+const CUSTOM_BUNDLE = true;
 
 export type LessonRichEditorHandle = {
   /** Insère une image (data URI ou URL) à la position du curseur. */
   insertImage: (src: string) => void;
+  /** Insère un tableau 3×3 avec ligne d'en-tête. */
+  insertTable: () => void;
 };
 
 type Props = {
@@ -85,6 +92,7 @@ export const LessonRichEditor = forwardRef<LessonRichEditorHandle, Props>(functi
     autofocus: startEmpty,
     avoidIosKeyboard: true,
     initialContent: initialDoc,
+    customSource: CUSTOM_BUNDLE ? customEditorHtml : undefined,
     onChange: () => scheduleSave(),
   });
 
@@ -110,6 +118,13 @@ export const LessonRichEditor = forwardRef<LessonRichEditorHandle, Props>(functi
     () => ({
       insertImage: (src: string) => {
         editor.setImage(src);
+        scheduleSave();
+      },
+      insertTable: () => {
+        // L'extension Table vit dans le bundle web : on pilote via injectJS.
+        editor.injectJS(
+          "window.__quizyloEditor && window.__quizyloEditor.chain().focus().insertTable({rows:3,cols:3,withHeaderRow:true}).run();",
+        );
         scheduleSave();
       },
     }),

@@ -195,6 +195,12 @@ HTML autonome) ; artefact généré `src/editor-web/editorHtml.ts` (~930 Ko).
 `editor-web` exclu du typecheck de l'app. **Auto-test** : l'artefact généré, amorcé
 via le vrai boot config TenTap avec un tableau en contenu initial, **boote et rend le
 tableau** dans un navigateur (ProseMirror + table + cellules, 0 erreur — capture).
-Reste : étape 2 (bridge Table pour insérer/éditer depuis la barre), étape 4 (câbler
-`customSource` dans `LessonRichEditor`), étape 5 (boutons natifs), étape 6 (round-trip
-`content`), puis test appareil.
+**S12 — Tableaux câblés dans l'app** : plutôt qu'un bridge Table complet, l'éditeur
+web expose son instance (`window.__quizyloEditor`) et le natif pilote l'insertion via
+`editor.injectJS()` (CoreBridge). `LessonRichEditor` charge le bundle sur-mesure
+(`customSource`, drapeau `CUSTOM_BUNDLE`) et expose `insertTable()` ; bouton « Insérer
+un tableau » dans le menu d'ajout. Round-trip `content` automatique (les nœuds `table`
+passent par `getJSON`/`setContent`). Auto-test navigateur : éditeur exposé → chaîne
+`insertTable` → tableau 3×3 inséré (0 erreur). `tsc` = 0, export web OK.
+Reste : édition fine du tableau (ajouter/supprimer ligne/colonne), puis test appareil ;
+plus tard, maths (même pipeline, extension en plus).

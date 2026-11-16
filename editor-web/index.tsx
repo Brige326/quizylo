@@ -1,6 +1,7 @@
 // Entrée web de l'éditeur TenTap sur-mesure : kit par défaut + extensions Table.
 // Bundlée en HTML autonome (customSource) et chargée par l'app dans la WebView.
 // Build : node scripts/build-editor.mjs  ->  src/editor-web/editorHtml.ts
+import { useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
 import { EditorContent, useTenTap, TenTapStartKit } from '@10play/tentap-editor/web';
 import { Table } from '@tiptap/extension-table';
@@ -15,6 +16,10 @@ function EditorWeb() {
       extensions: [Table.configure({ resizable: false }), TableRow, TableHeader, TableCell],
     },
   });
+  // Expose l'éditeur pour piloter les tableaux depuis le natif via injectJS.
+  useEffect(() => {
+    (window as unknown as { __quizyloEditor?: unknown }).__quizyloEditor = editor ?? undefined;
+  }, [editor]);
   return <EditorContent editor={editor} />;
 }
 
