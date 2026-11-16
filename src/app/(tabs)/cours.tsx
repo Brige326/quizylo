@@ -163,13 +163,6 @@ export default function MesCoursScreen() {
     <Screen>
       <TopBar showMenu={false} />
 
-      {/* TEMP — marqueur de version pour diagnostic (à retirer ensuite) */}
-      <View style={styles.versionTag}>
-        <Text variant="small" color={Palette.onPrimary}>
-          ✓ Nouvelle version — build 16/11 12h
-        </Text>
-      </View>
-
       {!loading && subjects.length > 0 ? (
         <View style={styles.header}>
           <View style={{ flex: 1 }}>
@@ -328,15 +321,6 @@ const styles = StyleSheet.create({
     backgroundColor: Palette.primary,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  versionTag: {
-    marginHorizontal: Spacing.lg,
-    marginBottom: Spacing.sm,
-    paddingVertical: 6,
-    paddingHorizontal: Spacing.md,
-    borderRadius: Radius.pill,
-    backgroundColor: Palette.primary,
-    alignSelf: 'flex-start',
   },
   searchBtn: {
     width: 44,

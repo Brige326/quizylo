@@ -469,13 +469,6 @@ export default function LeconScreen() {
         </View>
       </View>
 
-      {/* TEMP DEBUG — à retirer */}
-      <View style={{ backgroundColor: '#A855F7', paddingVertical: 8, paddingHorizontal: 16 }}>
-        <Text style={{ color: '#FFFFFF', fontSize: 13 }}>
-          {`DEBUG load=${String(loading)} id=${lessonId ? 'OK' : 'VIDE'} blocs=${blocks.length} onglet=${tab} save=${saveState}`}
-        </Text>
-      </View>
-
       {/* Bascule Notes / Ressources */}
       {!loading ? (
         <View style={styles.tabs}>
