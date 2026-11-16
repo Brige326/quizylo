@@ -19,6 +19,7 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { WebView } from 'react-native-webview';
 
 import { Screen } from '@/components/ui/Screen';
 import { Tappable } from '@/components/ui/Tappable';
@@ -78,6 +79,7 @@ export default function LeconScreen() {
   const [reordering, setReordering] = useState(false);
   const [colorPicker, setColorPicker] = useState<LessonBlock | null>(null);
   const [fontPicker, setFontPicker] = useState<LessonBlock | null>(null);
+  const [pdfViewer, setPdfViewer] = useState<{ url: string; name: string } | null>(null);
   const [tab, setTab] = useState<'notes' | 'resources'>('notes');
   const { width: screenW } = useWindowDimensions();
 
@@ -315,7 +317,9 @@ export default function LeconScreen() {
     if (!b.path) return;
     try {
       const u = urls[b.path] ?? (await signedUrlFor(b.path));
-      Linking.openURL(u);
+      // iOS affiche le PDF nativement dans une WebView ; Android ouvre en externe.
+      if (Platform.OS === 'ios') setPdfViewer({ url: u, name: b.name ?? 'Document PDF' });
+      else Linking.openURL(u);
     } catch {
       Alert.alert('Oups', "Impossible d'ouvrir le PDF.");
     }
@@ -805,6 +809,39 @@ export default function LeconScreen() {
           </Pressable>
         </Pressable>
       </Modal>
+
+      {/* Lecteur PDF intégré (iOS) */}
+      <Modal visible={!!pdfViewer} animationType="slide" onRequestClose={() => setPdfViewer(null)}>
+        <View style={styles.pdfViewer}>
+          <View style={[styles.pdfBar, { paddingTop: insets.top + Spacing.xs }]}>
+            <Tappable onPress={() => setPdfViewer(null)} hitSlop={12} scaleTo={0.9} accessibilityLabel="Fermer">
+              <Ionicons name="close" size={26} color={Palette.text} />
+            </Tappable>
+            <Text variant="bodyStrong" numberOfLines={1} style={{ flex: 1, textAlign: 'center' }}>
+              {pdfViewer?.name}
+            </Text>
+            <Tappable
+              onPress={() => pdfViewer && Linking.openURL(pdfViewer.url)}
+              hitSlop={12}
+              scaleTo={0.9}
+              accessibilityLabel="Ouvrir ailleurs">
+              <Ionicons name="open-outline" size={22} color={Palette.text} />
+            </Tappable>
+          </View>
+          {pdfViewer ? (
+            <WebView
+              source={{ uri: pdfViewer.url }}
+              style={{ flex: 1, backgroundColor: Palette.background }}
+              startInLoadingState
+              renderLoading={() => (
+                <View style={styles.center}>
+                  <ActivityIndicator color={color} />
+                </View>
+              )}
+            />
+          ) : null}
+        </View>
+      </Modal>
     </Screen>
   );
 }
@@ -987,4 +1024,14 @@ const styles = StyleSheet.create({
     borderColor: 'transparent',
   },
   colorDotActive: { borderColor: Palette.text },
+  pdfViewer: { flex: 1, backgroundColor: Palette.background },
+  pdfBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+    paddingHorizontal: Spacing.lg,
+    paddingBottom: Spacing.sm,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: Palette.border,
+  },
 });
