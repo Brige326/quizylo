@@ -200,9 +200,7 @@ export default function MesCoursScreen() {
         <FlatList
           data={subjects}
           keyExtractor={(s) => s.id}
-          numColumns={2}
-          columnWrapperStyle={styles.gridRow}
-          contentContainerStyle={styles.grid}
+          contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
           renderItem={({ item }) => (
             <SubjectCard
@@ -289,20 +287,26 @@ function SubjectCard({
   onOpen: () => void;
   onOptions: () => void;
 }) {
+  const count = subject.chapter_count ?? 0;
+  const initial = subject.name.trim().charAt(0).toUpperCase() || '?';
   return (
     <Tappable style={styles.card} onPress={onOpen} haptic={false}>
-      <View style={styles.cardTop}>
-        <View style={[styles.cardIcon, { backgroundColor: subject.color + '22' }]}>
-          <Ionicons name="book" size={22} color={subject.color} />
-        </View>
-        <Pressable hitSlop={10} onPress={onOptions} accessibilityLabel="Options">
-          <Ionicons name="ellipsis-horizontal" size={20} color={Palette.textMuted} />
-        </Pressable>
+      <View style={[styles.cardStripe, { backgroundColor: subject.color }]} />
+      <View style={[styles.cardBadge, { backgroundColor: subject.color + '22' }]}>
+        <Text style={[styles.cardBadgeText, { color: subject.color }]}>{initial}</Text>
       </View>
-      <Text variant="bodyStrong" numberOfLines={2} style={styles.cardName}>
-        {subject.name}
-      </Text>
-      <View style={[styles.cardBar, { backgroundColor: subject.color }]} />
+      <View style={styles.cardBody}>
+        <Text variant="bodyStrong" numberOfLines={1} style={styles.cardName}>
+          {subject.name}
+        </Text>
+        <Text variant="small" color={Palette.textMuted} style={styles.cardMeta}>
+          {count === 0 ? 'Aucun chapitre' : `${count} chapitre${count > 1 ? 's' : ''}`}
+        </Text>
+      </View>
+      <Pressable hitSlop={10} onPress={onOptions} style={styles.cardOptions} accessibilityLabel="Options">
+        <Ionicons name="ellipsis-horizontal" size={20} color={Palette.textMuted} />
+      </Pressable>
+      <Ionicons name="chevron-forward" size={18} color={Palette.textMuted} />
     </Tappable>
   );
 }
@@ -345,27 +349,37 @@ const styles = StyleSheet.create({
   },
   input: { flex: 1, color: Palette.text, ...Type.body },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: Spacing.xl },
-  grid: { paddingHorizontal: Spacing.lg, paddingBottom: Spacing.xl, gap: Spacing.md },
-  gridRow: { gap: Spacing.md },
+  list: { paddingHorizontal: Spacing.lg, paddingBottom: Spacing.xl, gap: Spacing.sm },
   card: {
-    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
     backgroundColor: Palette.surface,
     borderRadius: Radius.lg,
-    padding: Spacing.md,
-    height: 134,
-    justifyContent: 'space-between',
+    paddingRight: Spacing.md,
+    paddingLeft: Spacing.md + 6,
+    paddingVertical: Spacing.md,
     overflow: 'hidden',
   },
-  cardTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  cardIcon: {
-    width: 42,
-    height: 42,
+  cardStripe: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: 4,
+  },
+  cardBadge: {
+    width: 40,
+    height: 40,
     borderRadius: Radius.md,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  cardName: { marginTop: Spacing.sm },
-  cardBar: { height: 4, borderRadius: 2, marginTop: Spacing.md },
+  cardBadgeText: { ...Type.heading },
+  cardBody: { flex: 1, gap: 2 },
+  cardName: {},
+  cardMeta: {},
+  cardOptions: { padding: 2 },
   // Page plein écran
   page: { flex: 1, backgroundColor: Palette.background },
   pageHeader: {

@@ -16,6 +16,8 @@ export type Subject = {
   position: number;
   created_at: string;
   updated_at: string;
+  /** Nombre de chapitres de la matière (rempli par listSubjects). */
+  chapter_count?: number;
 };
 
 // Palette sobre pour les cartes de matières (cohérente avec l'identité Quizylo).
@@ -33,12 +35,18 @@ export const SUBJECT_COLORS = [
 export async function listSubjects(userId: string): Promise<Subject[]> {
   const { data, error } = await supabase
     .from('subjects')
-    .select('*')
+    .select('*, chapters(count)')
     .eq('user_id', userId)
     .order('position', { ascending: true })
     .order('created_at', { ascending: true });
   if (error) throw error;
-  return (data ?? []) as Subject[];
+  return (data ?? []).map((row: any) => {
+    const { chapters, ...rest } = row;
+    return {
+      ...rest,
+      chapter_count: Array.isArray(chapters) && chapters[0] ? chapters[0].count ?? 0 : 0,
+    } as Subject;
+  });
 }
 
 export async function createSubject(
