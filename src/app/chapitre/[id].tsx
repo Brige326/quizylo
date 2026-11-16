@@ -494,6 +494,7 @@ export default function ChapitreDocumentsScreen() {
         ) : revs.length === 0 ? (
           <EmptyState
             icon="sparkles-outline"
+            eyebrow="Révisions IA"
             title="Aucune révision"
             subtitle="Génère un quiz, une fiche, des flashcards, un résumé ou un examen blanc à partir de ce chapitre.">
             <Button label="Générer un contenu" onPress={() => setGenKindOpen(true)} />
@@ -534,6 +535,7 @@ export default function ChapitreDocumentsScreen() {
       ) : docs.length === 0 ? (
         <EmptyState
           icon="folder-open-outline"
+          eyebrow="Documents du chapitre"
           title="Aucun document"
           subtitle="Importe un PDF, une photo de cours, ou écris une note : tout reste rangé dans ce chapitre.">
           <Button label="Ajouter un document" onPress={() => setAddOpen(true)} />

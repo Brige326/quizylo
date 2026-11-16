@@ -13,6 +13,7 @@ export default function DossiersScreen() {
       <TopBar xp={profile?.xp ?? 0} streak={profile?.streak_days ?? 0} />
       <EmptyState
         icon="folder-open-outline"
+        eyebrow="Ton espace de révision IA"
         title="Transforme tes fichiers en savoir"
         subtitle="Ajoute tes cours et documents : Quizylo en fera des quiz, des résumés et des fiches de révision.">
         <Button label="C'est parti" onPress={() => comingSoon('Import de fichiers')} />

@@ -155,6 +155,7 @@ export default function MatiereDetailScreen() {
       ) : chapters.length === 0 ? (
         <EmptyState
           icon="list-outline"
+          eyebrow="Tes chapitres"
           title="Aucun chapitre"
           subtitle="Découpe cette matière en chapitres pour organiser tes cours et tes révisions.">
           <Button label="Ajouter un chapitre" onPress={openCreate} />

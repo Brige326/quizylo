@@ -143,6 +143,7 @@ export default function MesCoursScreen() {
         <TopBar />
         <EmptyState
           icon="library-outline"
+          eyebrow="Ta bibliothèque"
           title="Ta bibliothèque de cours"
           subtitle="Connecte-toi pour créer tes matières, importer tes documents et réviser où que tu sois.">
           <Button
@@ -190,6 +191,7 @@ export default function MesCoursScreen() {
       ) : subjects.length === 0 ? (
         <EmptyState
           icon="library-outline"
+          eyebrow="Ta bibliothèque"
           title="Ta bibliothèque de cours"
           subtitle="Crée ta première matière pour organiser tes cours, tes documents et tes révisions.">
           <Button label="Ajouter une matière" onPress={openCreate} />

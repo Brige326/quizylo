@@ -12,6 +12,7 @@ export default function ParcoursScreen() {
       <TopBar xp={profile?.xp ?? 0} streak={profile?.streak_days ?? 0} />
       <EmptyState
         icon="trail-sign-outline"
+        eyebrow="Tes parcours"
         title="Ton parcours commence ici"
         subtitle="Crée ta première matière pour générer un parcours de révision guidé, étape par étape.">
         <Button label="Créer un parcours" onPress={() => comingSoon('Parcours de cours')} />

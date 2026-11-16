@@ -669,6 +669,7 @@ export default function PlanningScreen() {
         <TopBar />
         <EmptyState
           icon="calendar-outline"
+          eyebrow="Ton agenda"
           title="Ton agenda personnel"
           subtitle="Connecte-toi pour organiser tes cours, tes révisions et tout ton quotidien.">
           <Button
@@ -1349,6 +1350,7 @@ function DayView({
     return (
       <EmptyState
         icon="sunny-outline"
+        eyebrow="Ta journée"
         title="Journée libre"
         subtitle="Rien de prévu ce jour. Ajoute une activité ou une tâche pour organiser ta journée.">
         <Button label="Ajouter" onPress={onAdd} />
