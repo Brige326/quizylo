@@ -68,7 +68,9 @@ export default function LeconScreen() {
   const color = params.color ?? Palette.primary;
   const userId = session?.user?.id;
 
-  const [loading, setLoading] = useState(true);
+  // L'éditeur s'affiche immédiatement (titre issu des paramètres) ; le contenu se
+  // remplit ensuite. On ne bloque jamais tout l'écran sur le chargement.
+  const [loading, setLoading] = useState(false);
   const [title, setTitle] = useState(params.name ?? '');
   const [blocks, setBlocks] = useState<LessonBlock[]>([]);
   const [saveState, setSaveState] = useState<SaveState>('saved');
@@ -94,7 +96,10 @@ export default function LeconScreen() {
   useEffect(() => {
     let alive = true;
     (async () => {
-      if (!lessonId) return;
+      if (!lessonId) {
+        if (alive) setLoading(false);
+        return;
+      }
       try {
         const l = await getLesson(lessonId);
         if (alive && l) {
