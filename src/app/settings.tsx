@@ -9,7 +9,9 @@ import { Tappable } from '@/components/ui/Tappable';
 import { Text } from '@/components/ui/Text';
 import { Palette, Radius, Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth';
+import { setCachedConversations, startNewChat } from '@/lib/chatNav';
 import { LANGUAGES, useI18n } from '@/lib/i18n';
+import { supabase } from '@/lib/supabase';
 
 export default function SettingsScreen() {
   const { session, profile, isGuest, signOut, exitGuest } = useAuth();
@@ -37,6 +39,28 @@ export default function SettingsScreen() {
   const onSignIn = () => {
     exitGuest();
     router.replace('/(auth)/login');
+  };
+
+  const deleteAllChats = () => {
+    const userId = session?.user?.id;
+    if (isGuest || !userId) {
+      soon(t('settings.deleteAll'));
+      return;
+    }
+    Alert.alert(t('settings.deleteAll'), t('settings.deleteAllConfirm'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      {
+        text: t('common.delete'),
+        style: 'destructive',
+        onPress: async () => {
+          await supabase.from('messages').delete().eq('user_id', userId);
+          await supabase.from('conversations').delete().eq('user_id', userId);
+          setCachedConversations([]);
+          startNewChat();
+          Alert.alert(t('settings.deleteAllDone'));
+        },
+      },
+    ]);
   };
 
   const onSignOut = () =>
@@ -103,7 +127,7 @@ export default function SettingsScreen() {
             icon="trash-outline"
             label={t('settings.deleteAll')}
             danger
-            onPress={() => soon(t('settings.deleteAll'))}
+            onPress={deleteAllChats}
           />
         </Section>
 
