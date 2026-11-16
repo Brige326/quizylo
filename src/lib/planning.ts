@@ -32,9 +32,44 @@ export type EventItem = {
   reminder_minutes: number | null;
   notif_id: string | null;
   recurrence: string; // 'none' | 'daily' | 'weekly' | 'monthly'
+  linked_chapter_id: string | null;
+  linked_subject_id: string | null;
+  linked_subject_name: string | null;
+  linked_chapter_name: string | null;
+  linked_color: string | null;
   created_at: string;
   updated_at: string;
 };
+
+export type EventLink = {
+  linkedChapterId?: string | null;
+  linkedSubjectId?: string | null;
+  linkedSubjectName?: string | null;
+  linkedChapterName?: string | null;
+  linkedColor?: string | null;
+};
+
+function linkCols(link?: EventLink) {
+  return {
+    linked_chapter_id: link?.linkedChapterId ?? null,
+    linked_subject_id: link?.linkedSubjectId ?? null,
+    linked_subject_name: link?.linkedSubjectName ?? null,
+    linked_chapter_name: link?.linkedChapterName ?? null,
+    linked_color: link?.linkedColor ?? null,
+  };
+}
+
+/** Assistant d'organisation (LLM). Renvoie configured:false si aucune clé n'est en place. */
+export async function organizeDay(params: {
+  request: string;
+  day: string;
+  events: { title: string; start: string | null; end: string | null; allDay: boolean }[];
+  tasks: { title: string }[];
+}): Promise<{ configured: boolean; text?: string; error?: string }> {
+  const { data, error } = await supabase.functions.invoke('organize-day', { body: params });
+  if (error) throw error;
+  return data as { configured: boolean; text?: string; error?: string };
+}
 
 /** Événements dont le début tombe dans [startISO, endISO). All-day d'abord, puis par heure. */
 export async function listEventsBetween(
@@ -65,6 +100,7 @@ export async function createEvent(params: {
   reminderMinutes?: number | null;
   notifId?: string | null;
   recurrence?: string;
+  link?: EventLink;
 }): Promise<EventItem> {
   const { data, error } = await supabase
     .from('events')
@@ -79,6 +115,7 @@ export async function createEvent(params: {
       reminder_minutes: params.reminderMinutes ?? null,
       notif_id: params.notifId ?? null,
       recurrence: params.recurrence ?? 'none',
+      ...linkCols(params.link),
     })
     .select('*')
     .single();
@@ -98,6 +135,7 @@ export async function updateEvent(
     reminderMinutes?: number | null;
     notifId?: string | null;
     recurrence?: string;
+    link?: EventLink;
   },
 ): Promise<void> {
   const { error } = await supabase
@@ -112,6 +150,7 @@ export async function updateEvent(
       reminder_minutes: params.reminderMinutes ?? null,
       notif_id: params.notifId ?? null,
       recurrence: params.recurrence ?? 'none',
+      ...linkCols(params.link),
       updated_at: new Date().toISOString(),
     })
     .eq('id', id);

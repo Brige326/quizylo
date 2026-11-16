@@ -37,12 +37,15 @@ import {
   listEventsBetween,
   listRecurringEvents,
   listTasksBetween,
+  organizeDay,
   setTaskDone,
   updateEvent,
   updateTask,
   type EventItem,
+  type EventLink,
   type TaskItem,
 } from '@/lib/planning';
+import { listChapters, listSubjects, type Chapter, type Subject } from '@/lib/courses';
 
 type ViewMode = 'day' | 'week' | 'month';
 
@@ -232,6 +235,20 @@ export default function PlanningScreen() {
   // Événements récurrents (bruts) pour générer les occurrences.
   const [recurringEvents, setRecurringEvents] = useState<EventItem[]>([]);
 
+  // Liaison de l'événement à un chapitre de Mes cours
+  type LinkSel = { chapterId: string; subjectId: string; subjectName: string; chapterName: string; color: string };
+  const [link, setLink] = useState<LinkSel | null>(null);
+  const [linkPickerOpen, setLinkPickerOpen] = useState(false);
+  const [linkSubjects, setLinkSubjects] = useState<Subject[]>([]);
+  const [linkChapters, setLinkChapters] = useState<Chapter[]>([]);
+  const [linkPickSubject, setLinkPickSubject] = useState<Subject | null>(null);
+
+  // Assistant d'organisation
+  const [organizeOpen, setOrganizeOpen] = useState(false);
+  const [organizeReq, setOrganizeReq] = useState('');
+  const [organizeText, setOrganizeText] = useState<string | null>(null);
+  const [organizeLoading, setOrganizeLoading] = useState(false);
+
   // Bornes de la plage à charger selon la vue.
   const range = useMemo(() => {
     if (view === 'day') return { start: startOfDay(day), end: addDays(startOfDay(day), 1) };
@@ -348,6 +365,7 @@ export default function PlanningScreen() {
     setEndTime(null);
     setReminderMin(null);
     setRecurrence('none');
+    setLink(null);
     setShowDate(false);
     setShowStart(false);
     setShowEnd(false);
@@ -368,6 +386,17 @@ export default function PlanningScreen() {
     setEndTime(e.ends_at ? new Date(e.ends_at) : null);
     setReminderMin(e.reminder_minutes ?? null);
     setRecurrence(e.recurrence ?? 'none');
+    setLink(
+      e.linked_chapter_id && e.linked_subject_id
+        ? {
+            chapterId: e.linked_chapter_id,
+            subjectId: e.linked_subject_id,
+            subjectName: e.linked_subject_name ?? '',
+            chapterName: e.linked_chapter_name ?? '',
+            color: e.linked_color ?? Palette.primary,
+          }
+        : null,
+    );
     setShowDate(false);
     setShowStart(false);
     setShowEnd(false);
@@ -397,6 +426,15 @@ export default function PlanningScreen() {
       const trigger = new Date(reference.getTime() - reminderMin * 60000);
       notifId = await scheduleReminder(trigger, title.trim(), 'Rappel Quizylo');
     }
+    const eventLink: EventLink | undefined = link
+      ? {
+          linkedChapterId: link.chapterId,
+          linkedSubjectId: link.subjectId,
+          linkedSubjectName: link.subjectName,
+          linkedChapterName: link.chapterName,
+          linkedColor: link.color,
+        }
+      : undefined;
     const payload = {
       title,
       category,
@@ -407,6 +445,7 @@ export default function PlanningScreen() {
       reminderMinutes: reminderMin,
       notifId,
       recurrence,
+      link: eventLink,
     };
     try {
       if (editing) await updateEvent(editing.id, payload);
@@ -536,6 +575,94 @@ export default function PlanningScreen() {
     }
   };
 
+  /* ---------- Liaison Mes cours ---------- */
+
+  const openLinkPicker = async () => {
+    if (!userId) return;
+    setLinkPickSubject(null);
+    setLinkChapters([]);
+    setLinkPickerOpen(true);
+    try {
+      setLinkSubjects(await listSubjects(userId));
+    } catch {
+      setLinkSubjects([]);
+    }
+  };
+
+  const pickLinkSubject = async (s: Subject) => {
+    setLinkPickSubject(s);
+    try {
+      setLinkChapters(await listChapters(s.id));
+    } catch {
+      setLinkChapters([]);
+    }
+  };
+
+  const pickLinkChapter = (c: Chapter) => {
+    if (!linkPickSubject) return;
+    setLink({
+      chapterId: c.id,
+      subjectId: linkPickSubject.id,
+      subjectName: linkPickSubject.name,
+      chapterName: c.name,
+      color: linkPickSubject.color,
+    });
+    setLinkPickerOpen(false);
+  };
+
+  const openLinkedChapter = () => {
+    if (!link) return;
+    setFormOpen(false);
+    router.push({
+      pathname: '/chapitre/[id]',
+      params: { id: link.chapterId, subjectId: link.subjectId, name: link.chapterName, color: link.color },
+    });
+  };
+
+  /* ---------- Assistant d'organisation ---------- */
+
+  const openOrganize = () => {
+    setOrganizeReq('');
+    setOrganizeText(null);
+    setOrganizeOpen(true);
+  };
+
+  const closeOrganize = () => {
+    if (!organizeLoading) setOrganizeOpen(false);
+  };
+
+  const runOrganize = async () => {
+    if (!userId) return;
+    setOrganizeLoading(true);
+    setOrganizeText(null);
+    const dayEvents = (byDay.get(dateKey(day)) ?? []).map((e) => ({
+      title: e.title,
+      start: e.all_day ? null : e.starts_at,
+      end: e.ends_at,
+      allDay: e.all_day,
+    }));
+    const dayTasks = (tasksByDay.get(ymd(day)) ?? []).map((t) => ({ title: t.title }));
+    try {
+      const res = await organizeDay({
+        request: organizeReq.trim(),
+        day: fmtDay(day),
+        events: dayEvents,
+        tasks: dayTasks,
+      });
+      if (!res.configured) {
+        setOrganizeText("⚠️ L'assistant IA n'est pas encore activé sur ton compte. On le branche très bientôt.");
+      } else if (res.error || !res.text) {
+        setOrganizeText("La proposition n'a pas pu être générée. Réessaie dans un instant.");
+      } else {
+        setOrganizeText(res.text);
+      }
+    } catch {
+      setOrganizeText("L'assistant est injoignable pour le moment.");
+    } finally {
+      setOrganizeLoading(false);
+    }
+  };
+
   if (isGuest || !userId) {
     return (
       <Screen>
@@ -565,6 +692,9 @@ export default function PlanningScreen() {
             {periodHasToday && view === 'day' ? "Aujourd'hui" : periodLabel}
           </Text>
         </View>
+        <Tappable style={styles.navArrow} onPress={openOrganize} accessibilityLabel="Organiser ma journée">
+          <Ionicons name="sparkles-outline" size={20} color={Palette.text} />
+        </Tappable>
         <Tappable style={styles.addBtn} onPress={() => setChooserOpen(true)} accessibilityLabel="Ajouter">
           <Ionicons name="add" size={26} color={Palette.onPrimary} />
         </Tappable>
@@ -787,6 +917,29 @@ export default function PlanningScreen() {
                   </Tappable>
                 </Row>
 
+                <Row label="Cours lié">
+                  {link ? (
+                    <Tappable onPress={() => setLink(null)} hitSlop={6} accessibilityLabel="Retirer le lien">
+                      <Ionicons name="close-circle" size={18} color={Palette.textMuted} />
+                    </Tappable>
+                  ) : (
+                    <Tappable onPress={openLinkPicker} hitSlop={6}>
+                      <Text variant="bodyStrong" color={Palette.textSecondary}>
+                        Lier
+                      </Text>
+                    </Tappable>
+                  )}
+                </Row>
+                {link ? (
+                  <Tappable style={styles.linkOpen} onPress={openLinkedChapter} haptic={false}>
+                    <Ionicons name="book-outline" size={18} color={link.color} />
+                    <Text variant="bodyStrong" style={{ flex: 1 }} numberOfLines={1}>
+                      {link.subjectName} › {link.chapterName}
+                    </Text>
+                    <Ionicons name="open-outline" size={18} color={Palette.textMuted} />
+                  </Tappable>
+                ) : null}
+
                 <TextInput
                   style={styles.descInput}
                   placeholder="Note (facultatif)"
@@ -1005,6 +1158,95 @@ export default function PlanningScreen() {
           </Pressable>
         </Pressable>
       </Modal>
+
+      {/* Sélecteur : matière puis chapitre */}
+      <Modal visible={linkPickerOpen} transparent animationType="fade" onRequestClose={() => setLinkPickerOpen(false)}>
+        <Pressable style={styles.bottomBackdrop} onPress={() => setLinkPickerOpen(false)}>
+          <Pressable style={[styles.addSheet, { paddingBottom: insets.bottom + Spacing.md, maxHeight: '70%' }]} onPress={() => {}}>
+            <View style={styles.sheetHandle} />
+            <View style={styles.sheetHead}>
+              <Text variant="heading">{linkPickSubject ? linkPickSubject.name : 'Choisir une matière'}</Text>
+              {linkPickSubject ? (
+                <Tappable onPress={() => setLinkPickSubject(null)} hitSlop={8}>
+                  <Text variant="small" color={Palette.primary}>
+                    Retour
+                  </Text>
+                </Tappable>
+              ) : null}
+            </View>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {!linkPickSubject ? (
+                linkSubjects.length === 0 ? (
+                  <Text variant="small" color={Palette.textMuted} style={{ paddingVertical: Spacing.md }}>
+                    Crée d'abord une matière dans Mes cours.
+                  </Text>
+                ) : (
+                  linkSubjects.map((s) => (
+                    <Tappable key={s.id} style={styles.addRow} onPress={() => pickLinkSubject(s)} haptic={false}>
+                      <View style={[styles.catDot, { backgroundColor: s.color }]} />
+                      <Text variant="bodyStrong" style={{ flex: 1 }} numberOfLines={1}>
+                        {s.name}
+                      </Text>
+                      <Ionicons name="chevron-forward" size={18} color={Palette.textMuted} />
+                    </Tappable>
+                  ))
+                )
+              ) : linkChapters.length === 0 ? (
+                <Text variant="small" color={Palette.textMuted} style={{ paddingVertical: Spacing.md }}>
+                  Cette matière n'a pas encore de chapitre.
+                </Text>
+              ) : (
+                linkChapters.map((c) => (
+                  <Tappable key={c.id} style={styles.addRow} onPress={() => pickLinkChapter(c)} haptic={false}>
+                    <Ionicons name="list" size={18} color={linkPickSubject.color} />
+                    <Text variant="bodyStrong" style={{ flex: 1 }} numberOfLines={1}>
+                      {c.name}
+                    </Text>
+                  </Tappable>
+                ))
+              )}
+            </ScrollView>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* Assistant d'organisation */}
+      <Modal visible={organizeOpen} transparent animationType="fade" onRequestClose={closeOrganize}>
+        <Pressable style={styles.backdrop} onPress={closeOrganize}>
+          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+            <Pressable style={styles.sheet} onPress={() => {}}>
+              <Text variant="heading">Organiser ma journée</Text>
+              <Text variant="small" color={Palette.textSecondary}>
+                Décris ce que tu veux caser ; l'assistant proposera un emploi du temps à ajuster.
+              </Text>
+              <TextInput
+                style={styles.descInput}
+                placeholder="Ex. 1 h de sport, réviser les maths 45 min, faire les courses…"
+                placeholderTextColor={Palette.textMuted}
+                value={organizeReq}
+                onChangeText={setOrganizeReq}
+                multiline
+                textAlignVertical="top"
+              />
+              {organizeText ? (
+                <ScrollView style={styles.proposal} showsVerticalScrollIndicator={false}>
+                  <Text variant="body" color={Palette.textSecondary} style={{ lineHeight: 22 }}>
+                    {organizeText}
+                  </Text>
+                </ScrollView>
+              ) : null}
+              <View style={styles.actions}>
+                <View style={{ flex: 1 }}>
+                  <Button label="Fermer" variant="ghost" onPress={closeOrganize} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Button label="Proposer" onPress={runOrganize} loading={organizeLoading} />
+                </View>
+              </View>
+            </Pressable>
+          </KeyboardAvoidingView>
+        </Pressable>
+      </Modal>
     </Screen>
   );
 }
@@ -1043,6 +1285,9 @@ function EventRow({ item, onPress }: { item: EventItem; onPress: () => void }) {
           {item.description ? ' · …' : ''}
         </Text>
       </View>
+      {item.linked_chapter_id ? (
+        <Ionicons name="book-outline" size={15} color={Palette.textMuted} />
+      ) : null}
       {item.recurrence !== 'none' ? (
         <Ionicons name="repeat" size={16} color={Palette.textMuted} />
       ) : null}
@@ -1449,6 +1694,23 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.md,
     minHeight: 72,
     marginTop: Spacing.md,
+  },
+  linkOpen: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    backgroundColor: Palette.surface,
+    borderRadius: Radius.md,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.md,
+    marginTop: Spacing.sm,
+  },
+  proposal: {
+    maxHeight: 220,
+    backgroundColor: Palette.surface,
+    borderRadius: Radius.md,
+    padding: Spacing.md,
+    marginTop: Spacing.sm,
   },
   rowBetween: {
     flexDirection: 'row',
