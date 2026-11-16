@@ -74,6 +74,21 @@ export default function MatiereDetailScreen() {
     setModalOpen(true);
   };
 
+  const onAdd = () => {
+    Alert.alert('Ajouter', undefined, [
+      { text: 'Nouveau chapitre', onPress: openCreate },
+      {
+        text: 'Nouvelle leçon',
+        onPress: () =>
+          Alert.alert(
+            'Nouvelle leçon',
+            'La création de leçons à l’intérieur d’un chapitre arrive à la prochaine étape.',
+          ),
+      },
+      { text: 'Annuler', style: 'cancel' },
+    ]);
+  };
+
   const openEdit = (c: Chapter) => {
     setEditing(c);
     setName(c.name);
@@ -135,15 +150,14 @@ export default function MatiereDetailScreen() {
           <Ionicons name="chevron-back" size={26} color={Palette.text} />
         </Tappable>
         <View style={styles.headerTitle}>
-          <View style={[styles.dot, { backgroundColor: color }]} />
-          <Text variant="heading" numberOfLines={1} style={{ flex: 1 }}>
+          <Text variant="title" numberOfLines={1} style={{ flex: 1 }}>
             {subjectName}
           </Text>
         </View>
         <Tappable
           style={[styles.addBtn, { backgroundColor: color }]}
-          onPress={openCreate}
-          accessibilityLabel="Ajouter un chapitre">
+          onPress={onAdd}
+          accessibilityLabel="Ajouter">
           <Ionicons name="add" size={24} color="#06130C" />
         </Tappable>
       </View>
@@ -166,7 +180,7 @@ export default function MatiereDetailScreen() {
           keyExtractor={(c) => c.id}
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
-          renderItem={({ item, index }) => (
+          renderItem={({ item }) => (
             <Tappable
               style={styles.row}
               onPress={() =>
@@ -175,13 +189,11 @@ export default function MatiereDetailScreen() {
                   params: { id: item.id, subjectId, name: item.name, color },
                 })
               }
+              onLongPress={() => onOptions(item)}
+              delayLongPress={300}
               haptic={false}>
-              <View style={[styles.index, { backgroundColor: color + '22' }]}>
-                <Text variant="bodyStrong" color={color}>
-                  {index + 1}
-                </Text>
-              </View>
-              <Text variant="bodyStrong" numberOfLines={2} style={{ flex: 1 }}>
+              <View style={[styles.rowAccent, { backgroundColor: color }]} />
+              <Text variant="heading" numberOfLines={2} style={{ flex: 1 }}>
                 {item.name}
               </Text>
               <Pressable hitSlop={10} onPress={() => onOptions(item)} accessibilityLabel="Options">
@@ -256,8 +268,7 @@ const styles = StyleSheet.create({
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: Palette.border,
   },
-  headerTitle: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
-  dot: { width: 12, height: 12, borderRadius: 6 },
+  headerTitle: { flex: 1, flexDirection: 'row', alignItems: 'center' },
   addBtn: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: Spacing.xl },
   list: { paddingHorizontal: Spacing.lg, paddingVertical: Spacing.sm, gap: Spacing.sm },
@@ -267,16 +278,13 @@ const styles = StyleSheet.create({
     gap: Spacing.md,
     backgroundColor: Palette.surface,
     borderRadius: Radius.lg,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.md,
+    paddingRight: Spacing.md,
+    paddingLeft: Spacing.md + 6,
+    paddingVertical: Spacing.lg,
+    minHeight: 76,
+    overflow: 'hidden',
   },
-  index: {
-    width: 36,
-    height: 36,
-    borderRadius: Radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  rowAccent: { position: 'absolute', left: 0, top: 0, bottom: 0, width: 4 },
   backdrop: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.6)',
