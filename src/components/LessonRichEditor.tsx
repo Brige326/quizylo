@@ -32,11 +32,20 @@ import { blocksToDoc, isEmptyDoc, type TipTapDoc } from '@/lib/lessonContent';
 // TenTap par défaut (sans tableaux) en cas de souci sur appareil.
 const CUSTOM_BUNDLE = true;
 
+export type TableAction =
+  | 'addRowAfter'
+  | 'addColumnAfter'
+  | 'deleteRow'
+  | 'deleteColumn'
+  | 'deleteTable';
+
 export type LessonRichEditorHandle = {
   /** Insère une image (data URI ou URL) à la position du curseur. */
   insertImage: (src: string) => void;
   /** Insère un tableau 3×3 avec ligne d'en-tête. */
   insertTable: () => void;
+  /** Modifie le tableau contenant le curseur (ligne/colonne/suppression). */
+  tableAction: (action: TableAction) => void;
 };
 
 type Props = {
@@ -124,6 +133,12 @@ export const LessonRichEditor = forwardRef<LessonRichEditorHandle, Props>(functi
         // L'extension Table vit dans le bundle web : on pilote via injectJS.
         editor.injectJS(
           "window.__quizyloEditor && window.__quizyloEditor.chain().focus().insertTable({rows:3,cols:3,withHeaderRow:true}).run();",
+        );
+        scheduleSave();
+      },
+      tableAction: (action: TableAction) => {
+        editor.injectJS(
+          `window.__quizyloEditor && window.__quizyloEditor.chain().focus().${action}().run();`,
         );
         scheduleSave();
       },

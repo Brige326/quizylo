@@ -202,5 +202,10 @@ web expose son instance (`window.__quizyloEditor`) et le natif pilote l'insertio
 un tableau » dans le menu d'ajout. Round-trip `content` automatique (les nœuds `table`
 passent par `getJSON`/`setContent`). Auto-test navigateur : éditeur exposé → chaîne
 `insertTable` → tableau 3×3 inséré (0 erreur). `tsc` = 0, export web OK.
-Reste : édition fine du tableau (ajouter/supprimer ligne/colonne), puis test appareil ;
-plus tard, maths (même pipeline, extension en plus).
+**S13 — Édition fine des tableaux** : `tableAction()` (addRowAfter, addColumnAfter,
+deleteRow, deleteColumn, deleteTable) via `injectJS` ; sous-menu « Modifier le
+tableau… ». Auto-test navigateur sur le bundle de l'app : insérer [3,9] → +ligne
+[4,12] → +colonne [4,16] → -ligne [3,12] → -colonne [3,9] → supprimer [0,0], 0 erreur.
+`tsc` = 0.
+
+Reste : test appareil ; puis **maths** (même pipeline, extension KaTeX en plus).

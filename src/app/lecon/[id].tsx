@@ -308,9 +308,25 @@ export default function LeconScreen() {
     await insertInlineImage({ uri: a.uri, width: a.width });
   };
 
+  const tableMenu = () => {
+    Alert.alert('Modifier le tableau', 'Place le curseur dans une cellule, puis choisis.', [
+      { text: 'Ajouter une ligne', onPress: () => richRef.current?.tableAction('addRowAfter') },
+      { text: 'Ajouter une colonne', onPress: () => richRef.current?.tableAction('addColumnAfter') },
+      { text: 'Supprimer la ligne', onPress: () => richRef.current?.tableAction('deleteRow') },
+      { text: 'Supprimer la colonne', onPress: () => richRef.current?.tableAction('deleteColumn') },
+      {
+        text: 'Supprimer le tableau',
+        style: 'destructive',
+        onPress: () => richRef.current?.tableAction('deleteTable'),
+      },
+      { text: 'Annuler', style: 'cancel' },
+    ]);
+  };
+
   const attachMenuRich = () => {
     Alert.alert('Ajouter à la leçon', undefined, [
       { text: 'Insérer un tableau', onPress: () => richRef.current?.insertTable() },
+      { text: 'Modifier le tableau…', onPress: tableMenu },
       { text: 'Prendre une photo', onPress: takePhotoInline },
       { text: 'Importer une image', onPress: pickImageInline },
       { text: 'Importer un PDF', onPress: pickPdf },
