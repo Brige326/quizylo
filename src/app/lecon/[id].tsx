@@ -1,15 +1,21 @@
 import { Ionicons } from '@expo/vector-icons';
+import * as DocumentPicker from 'expo-document-picker';
+import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
+  Image,
   KeyboardAvoidingView,
+  Linking,
+  Modal,
   Platform,
+  Pressable,
   ScrollView,
   StyleSheet,
   TextInput,
   View,
-  Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -20,8 +26,12 @@ import { Palette, Radius, Spacing, Type } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth';
 import {
   getLesson,
+  isMediaBlock,
+  removeLessonAsset,
   renameLesson,
   saveLessonBlocks,
+  signedUrlFor,
+  uploadLessonAsset,
   type LessonBlock,
   type LessonBlockType,
 } from '@/lib/courses';
@@ -45,6 +55,9 @@ export default function LeconScreen() {
   const [blocks, setBlocks] = useState<LessonBlock[]>([]);
   const [saveState, setSaveState] = useState<SaveState>('saved');
   const [focusId, setFocusId] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [urls, setUrls] = useState<Record<string, string>>({});
+  const [viewer, setViewer] = useState<string | null>(null);
 
   // Refs pour l'autosave (évite les closures périmées).
   const blocksRef = useRef<LessonBlock[]>([]);
@@ -76,6 +89,26 @@ export default function LeconScreen() {
     };
   }, [lessonId]);
 
+  // Résout les URLs signées des médias affichés.
+  useEffect(() => {
+    const missing = blocks.filter((b) => isMediaBlock(b.type) && b.path && !urls[b.path]);
+    if (missing.length === 0) return;
+    let alive = true;
+    (async () => {
+      for (const b of missing) {
+        try {
+          const u = await signedUrlFor(b.path!);
+          if (alive) setUrls((prev) => ({ ...prev, [b.path!]: u }));
+        } catch {
+          // silencieux : on réessaiera au prochain rendu
+        }
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [blocks, urls]);
+
   const persist = useCallback(async () => {
     if (!lessonId || !userId) return;
     try {
@@ -92,7 +125,6 @@ export default function LeconScreen() {
     }
   }, [lessonId, userId]);
 
-  // Autosave débouncé à chaque modification.
   useEffect(() => {
     if (loading) return;
     dirtyRef.current = true;
@@ -101,7 +133,6 @@ export default function LeconScreen() {
     return () => clearTimeout(t);
   }, [blocks, title, loading, persist]);
 
-  // Sauvegarde finale à la sortie de l'écran.
   useEffect(() => {
     return () => {
       if (dirtyRef.current) persist();
@@ -113,17 +144,85 @@ export default function LeconScreen() {
     else router.replace('/(tabs)/cours');
   };
 
-  const addBlock = (type: LessonBlockType) => {
-    const b: LessonBlock = { id: newId(), type, text: '' };
+  const insertAfterFocus = (b: LessonBlock) =>
     setBlocks((prev) => {
-      // Insère après le bloc actuellement actif, sinon à la fin.
       const idx = prev.findIndex((x) => x.id === focusId);
       if (idx === -1) return [...prev, b];
       const copy = prev.slice();
       copy.splice(idx + 1, 0, b);
       return copy;
     });
+
+  const addTextBlock = (type: LessonBlockType) => {
+    const b: LessonBlock = { id: newId(), type, text: '' };
+    insertAfterFocus(b);
     setFocusId(b.id);
+  };
+
+  const insertMedia = async (
+    kind: 'image' | 'pdf',
+    asset: { uri: string; name?: string; mime?: string },
+  ) => {
+    if (!userId || !lessonId) return;
+    setBusy(true);
+    try {
+      const { path } = await uploadLessonAsset({
+        userId,
+        lessonId,
+        kind,
+        uri: asset.uri,
+        name: asset.name,
+        mime: asset.mime,
+      });
+      insertAfterFocus({ id: newId(), type: kind, path, name: asset.name, mime: asset.mime });
+    } catch {
+      Alert.alert('Oups', "Le fichier n'a pas pu être ajouté. Réessaie dans un instant.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const takePhoto = async () => {
+    const perm = await ImagePicker.requestCameraPermissionsAsync();
+    if (!perm.granted) {
+      Alert.alert('Appareil photo', "Autorise l'accès à l'appareil photo pour prendre une photo.");
+      return;
+    }
+    const res = await ImagePicker.launchCameraAsync({ quality: 0.7 });
+    if (res.canceled) return;
+    const a = res.assets[0];
+    await insertMedia('image', { uri: a.uri, name: a.fileName ?? undefined, mime: a.mimeType ?? 'image/jpeg' });
+  };
+
+  const pickImage = async () => {
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) {
+      Alert.alert('Photos', "Autorise l'accès à tes photos pour importer une image.");
+      return;
+    }
+    const res = await ImagePicker.launchImageLibraryAsync({ quality: 0.7 });
+    if (res.canceled) return;
+    const a = res.assets[0];
+    await insertMedia('image', { uri: a.uri, name: a.fileName ?? undefined, mime: a.mimeType ?? 'image/jpeg' });
+  };
+
+  const pickPdf = async () => {
+    const res = await DocumentPicker.getDocumentAsync({
+      type: 'application/pdf',
+      copyToCacheDirectory: true,
+    });
+    if (res.canceled) return;
+    const a = res.assets[0];
+    await insertMedia('pdf', { uri: a.uri, name: a.name, mime: a.mimeType ?? 'application/pdf' });
+  };
+
+  const attachMenu = () => {
+    Alert.alert('Ajouter à la leçon', undefined, [
+      { text: 'Prendre une photo', onPress: takePhoto },
+      { text: 'Importer une image', onPress: pickImage },
+      { text: 'Importer un PDF', onPress: pickPdf },
+      { text: 'Annuler', style: 'cancel' },
+    ]);
   };
 
   const updateBlock = (id: string, text: string) =>
@@ -142,14 +241,23 @@ export default function LeconScreen() {
       return copy;
     });
 
-  const removeBlock = (id: string) => setBlocks((prev) => prev.filter((b) => b.id !== id));
+  const removeBlock = (b: LessonBlock) => {
+    setBlocks((prev) => prev.filter((x) => x.id !== b.id));
+    if (isMediaBlock(b.type) && b.path) removeLessonAsset(b.path).catch(() => {});
+  };
 
   const blockMenu = (b: LessonBlock) => {
+    if (isMediaBlock(b.type)) {
+      Alert.alert('Bloc', undefined, [
+        { text: 'Monter', onPress: () => move(b.id, -1) },
+        { text: 'Descendre', onPress: () => move(b.id, 1) },
+        { text: 'Supprimer', style: 'destructive', onPress: () => removeBlock(b) },
+        { text: 'Annuler', style: 'cancel' },
+      ]);
+      return;
+    }
     Alert.alert('Bloc', undefined, [
-      {
-        text: b.type === 'heading' ? '• Titre' : 'Titre',
-        onPress: () => changeType(b.id, 'heading'),
-      },
+      { text: b.type === 'heading' ? '• Titre' : 'Titre', onPress: () => changeType(b.id, 'heading') },
       {
         text: b.type === 'subheading' ? '• Sous-titre' : 'Sous-titre',
         onPress: () => changeType(b.id, 'subheading'),
@@ -157,18 +265,90 @@ export default function LeconScreen() {
       { text: b.type === 'text' ? '• Texte' : 'Texte', onPress: () => changeType(b.id, 'text') },
       { text: 'Monter', onPress: () => move(b.id, -1) },
       { text: 'Descendre', onPress: () => move(b.id, 1) },
-      { text: 'Supprimer', style: 'destructive', onPress: () => removeBlock(b.id) },
+      { text: 'Supprimer', style: 'destructive', onPress: () => removeBlock(b) },
       { text: 'Annuler', style: 'cancel' },
     ]);
   };
 
-  const inputStyleFor = (type: LessonBlockType) => {
-    if (type === 'heading') return styles.bHeading;
-    if (type === 'subheading') return styles.bSubheading;
-    return styles.bText;
+  const openPdf = async (b: LessonBlock) => {
+    if (!b.path) return;
+    try {
+      const u = urls[b.path] ?? (await signedUrlFor(b.path));
+      Linking.openURL(u);
+    } catch {
+      Alert.alert('Oups', "Impossible d'ouvrir le PDF.");
+    }
   };
+
+  const inputStyleFor = (type: LessonBlockType) =>
+    type === 'heading' ? styles.bHeading : type === 'subheading' ? styles.bSubheading : styles.bText;
   const placeholderFor = (type: LessonBlockType) =>
     type === 'heading' ? 'Titre' : type === 'subheading' ? 'Sous-titre' : 'Commence à écrire…';
+
+  const renderBlock = (b: LessonBlock) => {
+    if (b.type === 'image') {
+      const u = b.path ? urls[b.path] : undefined;
+      return (
+        <Tappable
+          key={b.id}
+          onPress={() => u && setViewer(u)}
+          onLongPress={() => blockMenu(b)}
+          delayLongPress={250}
+          haptic={false}
+          scaleTo={0.99}>
+          <View style={styles.imageWrap}>
+            {u ? (
+              <Image source={{ uri: u }} style={styles.image} resizeMode="cover" />
+            ) : (
+              <View style={styles.mediaLoading}>
+                <ActivityIndicator color={color} />
+              </View>
+            )}
+          </View>
+        </Tappable>
+      );
+    }
+    if (b.type === 'pdf') {
+      return (
+        <Tappable
+          key={b.id}
+          onPress={() => openPdf(b)}
+          onLongPress={() => blockMenu(b)}
+          delayLongPress={250}
+          haptic={false}
+          scaleTo={0.99}>
+          <View style={styles.pdfCard}>
+            <View style={[styles.pdfIcon, { backgroundColor: color + '22' }]}>
+              <Ionicons name="document-text" size={20} color={color} />
+            </View>
+            <Text variant="bodyStrong" numberOfLines={1} style={{ flex: 1 }}>
+              {b.name ?? 'Document PDF'}
+            </Text>
+            <Ionicons name="open-outline" size={18} color={Palette.textMuted} />
+          </View>
+        </Tappable>
+      );
+    }
+    return (
+      <Tappable
+        key={b.id}
+        onLongPress={() => blockMenu(b)}
+        delayLongPress={250}
+        haptic={false}
+        scaleTo={1}>
+        <TextInput
+          style={[styles.block, inputStyleFor(b.type)]}
+          value={b.text ?? ''}
+          onChangeText={(t) => updateBlock(b.id, t)}
+          onFocus={() => setFocusId(b.id)}
+          placeholder={placeholderFor(b.type)}
+          placeholderTextColor={Palette.textMuted}
+          autoFocus={focusId === b.id}
+          multiline
+        />
+      </Tappable>
+    );
+  };
 
   return (
     <Screen>
@@ -210,7 +390,6 @@ export default function LeconScreen() {
             contentContainerStyle={styles.body}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}>
-            {/* Titre de la leçon */}
             <TextInput
               style={styles.title}
               value={title}
@@ -223,56 +402,67 @@ export default function LeconScreen() {
 
             {blocks.length === 0 ? (
               <Text variant="body" color={Palette.textMuted} style={styles.hint}>
-                Ajoute un titre, un sous-titre ou du texte avec la barre en bas. Appuie longuement
-                sur un bloc pour le déplacer, le transformer ou le supprimer.
+                Ajoute un titre, du texte, une image ou un PDF avec la barre en bas. Appuie
+                longuement sur un bloc pour le déplacer, le transformer ou le supprimer.
               </Text>
             ) : (
-              blocks.map((b) => (
-                <Tappable
-                  key={b.id}
-                  onLongPress={() => blockMenu(b)}
-                  delayLongPress={250}
-                  haptic={false}
-                  scaleTo={1}>
-                  <TextInput
-                    style={[styles.block, inputStyleFor(b.type)]}
-                    value={b.text}
-                    onChangeText={(t) => updateBlock(b.id, t)}
-                    onFocus={() => setFocusId(b.id)}
-                    placeholder={placeholderFor(b.type)}
-                    placeholderTextColor={Palette.textMuted}
-                    autoFocus={focusId === b.id}
-                    multiline
-                  />
-                </Tappable>
-              ))
+              blocks.map(renderBlock)
             )}
             <View style={{ height: 24 }} />
           </ScrollView>
 
           {/* Barre d'insertion */}
           <View style={[styles.toolbar, { paddingBottom: insets.bottom + Spacing.sm }]}>
-            <Tappable style={styles.tool} onPress={() => addBlock('heading')} scaleTo={0.92}>
+            <Tappable style={styles.tool} onPress={() => addTextBlock('heading')} scaleTo={0.92}>
               <Ionicons name="text" size={18} color={Palette.text} />
               <Text variant="small" color={Palette.textSecondary}>
                 Titre
               </Text>
             </Tappable>
-            <Tappable style={styles.tool} onPress={() => addBlock('subheading')} scaleTo={0.92}>
+            <Tappable style={styles.tool} onPress={() => addTextBlock('subheading')} scaleTo={0.92}>
               <Ionicons name="text-outline" size={18} color={Palette.text} />
               <Text variant="small" color={Palette.textSecondary}>
                 Sous-titre
               </Text>
             </Tappable>
-            <Tappable style={styles.tool} onPress={() => addBlock('text')} scaleTo={0.92}>
+            <Tappable style={styles.tool} onPress={() => addTextBlock('text')} scaleTo={0.92}>
               <Ionicons name="reorder-four-outline" size={18} color={Palette.text} />
               <Text variant="small" color={Palette.textSecondary}>
                 Texte
               </Text>
             </Tappable>
+            <Tappable style={styles.tool} onPress={attachMenu} scaleTo={0.92}>
+              <Ionicons name="attach" size={18} color={Palette.text} />
+              <Text variant="small" color={Palette.textSecondary}>
+                Joindre
+              </Text>
+            </Tappable>
           </View>
         </KeyboardAvoidingView>
       )}
+
+      {/* Overlay d'upload */}
+      {busy ? (
+        <View style={styles.uploadOverlay}>
+          <View style={styles.uploadCard}>
+            <ActivityIndicator color={Palette.primary} />
+            <Text variant="small" color={Palette.textSecondary}>
+              Ajout du fichier…
+            </Text>
+          </View>
+        </View>
+      ) : null}
+
+      {/* Visionneuse image plein écran */}
+      <Modal
+        visible={!!viewer}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setViewer(null)}>
+        <Pressable style={styles.viewerBackdrop} onPress={() => setViewer(null)}>
+          {viewer ? <Image source={{ uri: viewer }} style={styles.viewerImage} resizeMode="contain" /> : null}
+        </Pressable>
+      </Modal>
     </Screen>
   );
 }
@@ -291,14 +481,34 @@ const styles = StyleSheet.create({
   title: { color: Palette.text, ...Type.display, padding: 0 },
   titleRule: { width: 44, height: 4, borderRadius: 2, marginTop: Spacing.sm, marginBottom: Spacing.md },
   hint: { lineHeight: 22, marginTop: Spacing.sm },
-  block: {
-    color: Palette.text,
-    paddingVertical: Spacing.xs,
-    paddingHorizontal: 0,
-  },
+  block: { color: Palette.text, paddingVertical: Spacing.xs, paddingHorizontal: 0 },
   bHeading: { ...Type.title },
   bSubheading: { ...Type.heading },
   bText: { ...Type.body, lineHeight: 23 },
+  imageWrap: {
+    marginVertical: Spacing.sm,
+    borderRadius: Radius.lg,
+    overflow: 'hidden',
+    backgroundColor: Palette.surface,
+  },
+  image: { width: '100%', height: 220 },
+  mediaLoading: { height: 220, alignItems: 'center', justifyContent: 'center' },
+  pdfCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+    marginVertical: Spacing.sm,
+    padding: Spacing.md,
+    borderRadius: Radius.lg,
+    backgroundColor: Palette.surface,
+  },
+  pdfIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: Radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   toolbar: {
     flexDirection: 'row',
     gap: Spacing.sm,
@@ -313,9 +523,35 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
+    gap: 5,
     height: 44,
     borderRadius: Radius.md,
     backgroundColor: Palette.surface,
   },
+  uploadOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.45)',
+  },
+  uploadCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
+    borderRadius: Radius.lg,
+    backgroundColor: Palette.surfaceElevated,
+  },
+  viewerBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.92)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  viewerImage: { width: '100%', height: '100%' },
 });

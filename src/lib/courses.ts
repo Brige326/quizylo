@@ -138,13 +138,22 @@ export async function deleteChapter(id: string): Promise<void> {
 
 /* ---------- Leçons (chapitres → leçons) ---------- */
 
-export type LessonBlockType = 'heading' | 'subheading' | 'text';
+export type LessonBlockType = 'heading' | 'subheading' | 'text' | 'image' | 'pdf';
 
 export type LessonBlock = {
   id: string;
   type: LessonBlockType;
-  text: string;
+  /** Blocs texte (titre / sous-titre / texte). */
+  text?: string;
+  /** Blocs médias (image / pdf) : chemin Storage privé. */
+  path?: string;
+  /** Nom d'origine du fichier (surtout pour les PDF). */
+  name?: string;
+  mime?: string;
 };
+
+export const TEXT_BLOCK_TYPES: LessonBlockType[] = ['heading', 'subheading', 'text'];
+export const isMediaBlock = (t: LessonBlockType) => t === 'image' || t === 'pdf';
 
 export type Lesson = {
   id: string;
@@ -343,6 +352,34 @@ export async function signedUrlFor(path: string): Promise<string> {
   const { data, error } = await supabase.storage.from(DOCS_BUCKET).createSignedUrl(path, 3600);
   if (error) throw error;
   return data.signedUrl;
+}
+
+/**
+ * Téléverse un média de leçon (image ou PDF) dans le bucket privé et renvoie son
+ * chemin Storage. Aucune ligne `documents` : le média vit dans les blocs de la leçon.
+ */
+export async function uploadLessonAsset(params: {
+  userId: string;
+  lessonId: string;
+  kind: 'image' | 'pdf';
+  uri: string;
+  name?: string;
+  mime?: string;
+}): Promise<{ path: string }> {
+  const { userId, lessonId, kind, uri, name, mime } = params;
+  const buffer = await new File(uri).arrayBuffer();
+  const ext = extFor(name, mime);
+  const path = `${userId}/lessons/${lessonId}/${uid()}.${ext}`;
+  const { error: upErr } = await supabase.storage.from(DOCS_BUCKET).upload(path, buffer, {
+    contentType: mime ?? (kind === 'pdf' ? 'application/pdf' : 'image/jpeg'),
+    upsert: false,
+  });
+  if (upErr) throw upErr;
+  return { path };
+}
+
+export async function removeLessonAsset(path: string): Promise<void> {
+  await supabase.storage.from(DOCS_BUCKET).remove([path]);
 }
 
 export async function renameDocument(id: string, title: string): Promise<void> {
