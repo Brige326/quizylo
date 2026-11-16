@@ -140,6 +140,8 @@ export async function deleteChapter(id: string): Promise<void> {
 
 export type LessonBlockType = 'heading' | 'subheading' | 'text' | 'image' | 'pdf';
 
+export type LessonFont = 'default' | 'serif' | 'hand';
+
 export type LessonBlock = {
   id: string;
   type: LessonBlockType;
@@ -147,6 +149,8 @@ export type LessonBlock = {
   text?: string;
   /** Couleur du texte (blocs titre / sous-titre / texte). Absent = couleur par défaut. */
   color?: string;
+  /** Police du bloc texte. Absent = police standard du système. */
+  font?: LessonFont;
   /** Blocs médias (image / pdf) : chemin Storage privé. */
   path?: string;
   /** Nom d'origine du fichier (surtout pour les PDF). */
@@ -156,6 +160,13 @@ export type LessonBlock = {
 
 export const TEXT_BLOCK_TYPES: LessonBlockType[] = ['heading', 'subheading', 'text'];
 export const isMediaBlock = (t: LessonBlockType) => t === 'image' || t === 'pdf';
+
+/** Polices proposées pour les blocs texte d'une leçon. */
+export const LESSON_FONTS: { key: LessonFont; label: string }[] = [
+  { key: 'default', label: 'Standard' },
+  { key: 'serif', label: 'Serif' },
+  { key: 'hand', label: 'Manuscrite' },
+];
 
 /** Couleurs proposées pour les titres / sous-titres / texte d'une leçon. */
 export const LESSON_TEXT_COLORS = [

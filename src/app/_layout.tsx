@@ -1,4 +1,6 @@
+import { Caveat_400Regular, Caveat_700Bold } from '@expo-google-fonts/caveat';
 import { useFonts, Fredoka_600SemiBold } from '@expo-google-fonts/fredoka';
+import { Lora_400Regular, Lora_700Bold } from '@expo-google-fonts/lora';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
@@ -16,7 +18,13 @@ SplashScreen.preventAutoHideAsync();
 
 function RootNavigator() {
   const { initializing } = useAuth();
-  const [fontsLoaded] = useFonts({ Fredoka_600SemiBold });
+  const [fontsLoaded] = useFonts({
+    Fredoka_600SemiBold,
+    Lora_400Regular,
+    Lora_700Bold,
+    Caveat_400Regular,
+    Caveat_700Bold,
+  });
   const ready = !initializing && fontsLoaded;
 
   useEffect(() => {

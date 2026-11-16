@@ -28,6 +28,7 @@ import { useAuth } from '@/contexts/auth';
 import {
   getLesson,
   isMediaBlock,
+  LESSON_FONTS,
   LESSON_TEXT_COLORS,
   removeLessonAsset,
   renameLesson,
@@ -36,7 +37,21 @@ import {
   uploadLessonAsset,
   type LessonBlock,
   type LessonBlockType,
+  type LessonFont,
 } from '@/lib/courses';
+
+/** Résout la famille de police réelle selon la police choisie et le type de bloc. */
+function fontFamilyFor(font: LessonFont | undefined, type: LessonBlockType): string | undefined {
+  const bold = type === 'heading' || type === 'subheading';
+  if (font === 'serif') return bold ? 'Lora_700Bold' : 'Lora_400Regular';
+  if (font === 'hand') return bold ? 'Caveat_700Bold' : 'Caveat_400Regular';
+  return undefined;
+}
+const FONT_SAMPLE: Record<LessonFont, string | undefined> = {
+  default: undefined,
+  serif: 'Lora_400Regular',
+  hand: 'Caveat_400Regular',
+};
 
 let _seq = 0;
 const newId = () => `${Date.now().toString(36)}-${(_seq++).toString(36)}`;
@@ -62,6 +77,7 @@ export default function LeconScreen() {
   const [viewer, setViewer] = useState<string | null>(null);
   const [reordering, setReordering] = useState(false);
   const [colorPicker, setColorPicker] = useState<LessonBlock | null>(null);
+  const [fontPicker, setFontPicker] = useState<LessonBlock | null>(null);
   const [tab, setTab] = useState<'notes' | 'resources'>('notes');
   const { width: screenW } = useWindowDimensions();
 
@@ -252,6 +268,9 @@ export default function LeconScreen() {
   const changeColor = (id: string, color?: string) =>
     setBlocks((prev) => prev.map((b) => (b.id === id ? { ...b, color } : b)));
 
+  const changeFont = (id: string, font: LessonFont) =>
+    setBlocks((prev) => prev.map((b) => (b.id === id ? { ...b, font } : b)));
+
   const move = (id: string, dir: -1 | 1) =>
     setBlocks((prev) => {
       const i = prev.findIndex((b) => b.id === id);
@@ -380,7 +399,14 @@ export default function LeconScreen() {
         haptic={false}
         scaleTo={1}>
         <TextInput
-          style={[styles.block, inputStyleFor(b.type), b.color ? { color: b.color } : null]}
+          style={[
+            styles.block,
+            inputStyleFor(b.type),
+            b.color ? { color: b.color } : null,
+            b.font && b.font !== 'default'
+              ? { fontFamily: fontFamilyFor(b.font, b.type) }
+              : null,
+          ]}
           value={b.text ?? ''}
           onChangeText={(t) => updateBlock(b.id, t)}
           onFocus={() => setFocusId(b.id)}
@@ -636,6 +662,13 @@ export default function LeconScreen() {
               </Tappable>
               <Tappable
                 style={styles.fmtBtn}
+                onPress={() => setFontPicker(focusedBlock)}
+                scaleTo={0.9}
+                accessibilityLabel="Police">
+                <Text style={styles.fontBtnLabel}>Aa</Text>
+              </Tappable>
+              <Tappable
+                style={styles.fmtBtn}
                 onPress={() => confirmRemove(focusedBlock)}
                 scaleTo={0.9}
                 accessibilityLabel="Supprimer">
@@ -733,6 +766,42 @@ export default function LeconScreen() {
                 );
               })}
             </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* Feuille : police d'un bloc */}
+      <Modal
+        visible={!!fontPicker}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setFontPicker(null)}>
+        <Pressable style={styles.sheetBackdrop} onPress={() => setFontPicker(null)}>
+          <Pressable style={[styles.sheet, { paddingBottom: insets.bottom + Spacing.lg }]}>
+            <Text variant="heading" style={{ marginBottom: Spacing.sm }}>
+              Police du bloc
+            </Text>
+            {LESSON_FONTS.map((f) => {
+              const active = (fontPicker?.font ?? 'default') === f.key;
+              return (
+                <Pressable
+                  key={f.key}
+                  onPress={() => {
+                    if (fontPicker) changeFont(fontPicker.id, f.key);
+                    setFontPicker(null);
+                  }}
+                  style={styles.fontOption}>
+                  <Text
+                    style={[
+                      styles.fontOptionLabel,
+                      FONT_SAMPLE[f.key] ? { fontFamily: FONT_SAMPLE[f.key] } : null,
+                    ]}>
+                    {f.label}
+                  </Text>
+                  {active ? <Ionicons name="checkmark" size={18} color={color} /> : null}
+                </Pressable>
+              );
+            })}
           </Pressable>
         </Pressable>
       </Modal>
@@ -863,6 +932,16 @@ const styles = StyleSheet.create({
     borderColor: Palette.border,
   },
   fmtAdd: { backgroundColor: Palette.primary, marginRight: 0 },
+  fontBtnLabel: { fontFamily: 'Lora_700Bold', fontSize: 16, color: Palette.text },
+  fontOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: Spacing.md,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: Palette.border,
+  },
+  fontOptionLabel: { fontSize: 18, color: Palette.text },
   uploadOverlay: {
     position: 'absolute',
     top: 0,
