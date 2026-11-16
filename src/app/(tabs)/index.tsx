@@ -25,7 +25,7 @@ import { Palette, Radius, Spacing, Type } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth';
 import { comingSoon } from '@/lib/ui';
 import { getTabBarHeight, subscribeTabBarHeight } from '@/lib/layoutStore';
-import { subscribeChatNav } from '@/lib/chatNav';
+import { setCachedConversations, subscribeChatNav } from '@/lib/chatNav';
 import { supabase } from '@/lib/supabase';
 import { useI18n } from '@/lib/i18n';
 
@@ -73,6 +73,24 @@ export default function AccueilScreen() {
   const { height: kbHeight } = useReanimatedKeyboardAnimation();
   const [tabH, setTabH] = useState(getTabBarHeight());
   useEffect(() => subscribeTabBarHeight(setTabH), []);
+
+  // Préchargement silencieux des discussions dès la connexion : le cache est prêt AVANT
+  // que l'utilisateur n'ouvre le menu la première fois → aucun squelette, aucun flash.
+  useEffect(() => {
+    if (!userId) return;
+    let active = true;
+    supabase
+      .from('conversations')
+      .select('id, title')
+      .order('updated_at', { ascending: false })
+      .limit(30)
+      .then(({ data }) => {
+        if (active && data) setCachedConversations(data as { id: string; title: string }[]);
+      });
+    return () => {
+      active = false;
+    };
+  }, [userId]);
 
   // On remonte la barre de (hauteur clavier − hauteur réelle de la TabBar), pile collée au clavier.
   const kavAnimatedStyle = useAnimatedStyle(() => ({

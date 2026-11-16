@@ -11,7 +11,13 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
-import Swipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import Reanimated, {
+  runOnJS,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
@@ -208,11 +214,9 @@ export default function MenuScreen() {
             />
           ))
         ) : loading ? (
-          <View>
-            <SkeletonRow />
-            <SkeletonRow />
-            <SkeletonRow />
-          </View>
+          // Rien pendant le (très bref) chargement : le cache est préchargé dès la connexion,
+          // donc la liste est déjà prête à la 1re ouverture. Aucun squelette, aucun flash.
+          null
         ) : (
           <Text variant="body" color={Palette.textMuted} style={{ paddingVertical: Spacing.sm }}>
             {isGuest
@@ -270,14 +274,8 @@ function MenuRow({
   );
 }
 
-function SkeletonRow() {
-  return (
-    <View style={styles.skelRow}>
-      <View style={styles.skelDot} />
-      <View style={styles.skelBar} />
-    </View>
-  );
-}
+// Largeur du bouton « Supprimer » révélé.
+const ACTION_W = 96;
 
 function ConversationRow({
   label,
@@ -288,36 +286,82 @@ function ConversationRow({
   onOpen: () => void;
   onDelete: () => void;
 }) {
-  // Glisser vers la gauche révèle « Supprimer » (comme Mail / ChatGPT).
-  const renderRightActions = () => (
-    <Pressable style={styles.swipeDelete} onPress={onDelete}>
-      <Ionicons name="trash-outline" size={20} color="#fff" />
-      <Text variant="caption" color="#fff" style={{ marginTop: 2 }}>
-        Supprimer
-      </Text>
-    </Pressable>
-  );
+  // Glissement maison, 100 % maîtrisé : la ligne ne bouge QUE sur un geste horizontal franc
+  // et CÈDE au scroll vertical. Résultat : au simple toucher ou défilement, le rouge n'apparaît
+  // jamais — il n'apparaît que lorsque l'utilisateur balaie réellement la discussion.
+  const tx = useSharedValue(0);
+  const startX = useSharedValue(0);
+  const openRef = useRef(false);
+
+  const markOpen = (v: boolean) => {
+    openRef.current = v;
+  };
+
+  const pan = Gesture.Pan()
+    // Il faut ≥ 14 px horizontaux pour que le geste démarre…
+    .activeOffsetX([-14, 14])
+    // …et au moindre mouvement vertical (≥ 8 px), le geste échoue et laisse le scroll gagner.
+    .failOffsetY([-8, 8])
+    .onStart(() => {
+      startX.value = tx.value;
+    })
+    .onUpdate((e) => {
+      const next = startX.value + e.translationX;
+      // On n'autorise que le glissement vers la gauche, borné à la largeur du bouton.
+      tx.value = next < -ACTION_W ? -ACTION_W : next > 0 ? 0 : next;
+    })
+    .onEnd(() => {
+      const shouldOpen = tx.value < -ACTION_W * 0.5;
+      tx.value = withTiming(shouldOpen ? -ACTION_W : 0, { duration: 180 });
+      runOnJS(markOpen)(shouldOpen);
+    });
+
+  const frontStyle = useAnimatedStyle(() => ({ transform: [{ translateX: tx.value }] }));
+
+  const handlePress = () => {
+    // Si le bouton est déjà révélé, un tap le referme au lieu d'ouvrir la discussion.
+    if (openRef.current) {
+      tx.value = withTiming(0, { duration: 160 });
+      openRef.current = false;
+      return;
+    }
+    onOpen();
+  };
+
+  const handleDelete = () => {
+    tx.value = withTiming(0, { duration: 120 });
+    openRef.current = false;
+    onDelete();
+  };
+
   return (
-    <Swipeable
-      renderRightActions={renderRightActions}
-      overshootRight={false}
-      friction={2}
-      containerStyle={styles.swipeContainer}
-      childrenContainerStyle={styles.swipeChild}>
-      <Tappable style={styles.convRow} onPress={onOpen} haptic={false}>
-        <Ionicons name="chatbox-outline" size={22} color={Palette.purple} />
-        <Text variant="bodyStrong" style={styles.convLabel} numberOfLines={1}>
-          {label}
+    <View style={styles.swipeWrap}>
+      {/* Bouton Supprimer placé DERRIÈRE la ligne, à droite : invisible tant que la ligne le couvre. */}
+      <Pressable style={styles.swipeDelete} onPress={handleDelete}>
+        <Ionicons name="trash-outline" size={20} color="#fff" />
+        <Text variant="caption" color="#fff" style={{ marginTop: 2 }}>
+          Supprimer
         </Text>
-      </Tappable>
-    </Swipeable>
+      </Pressable>
+      <GestureDetector gesture={pan}>
+        <Reanimated.View style={[styles.swipeFront, frontStyle]}>
+          <Tappable style={styles.convRow} onPress={handlePress} haptic={false}>
+            <Ionicons name="chatbox-outline" size={22} color={Palette.purple} />
+            <Text variant="bodyStrong" style={styles.convLabel} numberOfLines={1}>
+              {label}
+            </Text>
+          </Tappable>
+        </Reanimated.View>
+      </GestureDetector>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  swipeContainer: { width: '100%', overflow: 'hidden' },
-  swipeChild: { width: '100%' },
+  // Conteneur : le bouton Supprimer est posé derrière (absolu), la ligne glisse par-dessus.
+  swipeWrap: { width: '100%', justifyContent: 'center', overflow: 'hidden' },
+  swipeFront: { width: '100%', backgroundColor: Palette.background },
   convRow: {
     width: '100%',
     flexDirection: 'row',
@@ -328,16 +372,16 @@ const styles = StyleSheet.create({
   },
   convLabel: { flex: 1 },
   swipeDelete: {
-    width: 88,
+    position: 'absolute',
+    right: 0,
+    top: 4,
+    bottom: 4,
+    width: ACTION_W,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: Palette.danger,
     borderRadius: Radius.md,
-    marginVertical: 4,
   },
-  skelRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, paddingVertical: Spacing.md },
-  skelDot: { width: 22, height: 22, borderRadius: 11, backgroundColor: Palette.surface },
-  skelBar: { flex: 1, height: 14, borderRadius: 7, backgroundColor: Palette.surface, maxWidth: '70%' },
   root: { flex: 1 },
   overlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: '#000' },
   panel: {
