@@ -78,8 +78,11 @@ export const LessonRichEditor = forwardRef<LessonRichEditorHandle, Props>(functi
     saveTimer.current = setTimeout(save, 800);
   }, [save]);
 
+  // Une leçon vide ouvre directement le clavier pour écrire tout de suite.
+  const startEmpty = useMemo(() => isEmptyDoc(initialDoc), [initialDoc]);
+
   const editor = useEditorBridge({
-    autofocus: false,
+    autofocus: startEmpty,
     avoidIosKeyboard: true,
     initialContent: initialDoc,
     onChange: () => scheduleSave(),
@@ -88,6 +91,11 @@ export const LessonRichEditor = forwardRef<LessonRichEditorHandle, Props>(functi
   // Ref vers l'éditeur pour que `save` lise toujours l'instance courante.
   const editorRef = useRef(editor);
   editorRef.current = editor;
+
+  // Texte d'invite pour guider une leçon vide.
+  useEffect(() => {
+    editor.setPlaceholder('Commence à écrire ta leçon…');
+  }, [editor]);
 
   // Mode du bandeau de couleurs : couleur du texte ou surligneur.
   const [colorMode, setColorMode] = useState<'text' | 'highlight'>('text');

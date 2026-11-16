@@ -159,6 +159,11 @@ début de chaque séance**, pas d'avance.
   bouton de mode (Texte / Surligne). Auto-test moteur : `setHighlight` applique
   bien un `<mark>` ; `unsetHighlight` OK. `tsc` = 0, export web OK.
 
+- **S9 — Finitions ergonomie** : lien & image déjà dans la barre par défaut (rien à
+  faire). Ajout d'un **placeholder** (« Commence à écrire ta leçon… ») et du **focus
+  auto** quand la leçon est vide (clavier + barre tout de suite). Auto-test moteur :
+  placeholder rendu sur éditeur vide. `tsc` = 0, export web OK.
+
 ## Ce qui exige un bundle d'éditeur web personnalisé (phase d'infra à part)
 
 Tableaux, mathématiques (KaTeX/MathLive), chimie, graphiques, polices custom,
