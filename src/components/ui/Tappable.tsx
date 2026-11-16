@@ -11,6 +11,8 @@ import {
 type TappableProps = {
   children: React.ReactNode;
   onPress?: (e: GestureResponderEvent) => void;
+  onLongPress?: (e: GestureResponderEvent) => void;
+  delayLongPress?: number;
   style?: StyleProp<ViewStyle>;
   haptic?: boolean;
   scaleTo?: number;
@@ -24,6 +26,8 @@ type TappableProps = {
 export function Tappable({
   children,
   onPress,
+  onLongPress,
+  delayLongPress,
   style,
   haptic = true,
   scaleTo = 0.97,
@@ -51,7 +55,9 @@ export function Tappable({
       accessibilityLabel={accessibilityLabel}
       onPressIn={() => animate(scaleTo)}
       onPressOut={() => animate(1, 6)}
-      onPress={handlePress}>
+      onPress={handlePress}
+      onLongPress={onLongPress}
+      delayLongPress={delayLongPress}>
       <Animated.View style={[style, { transform: [{ scale }] }, disabled && { opacity: 0.5 }]}>
         {children}
       </Animated.View>

@@ -116,3 +116,44 @@ export const Radius = {
 
 export const BottomTabInset = Platform.select({ ios: 50, android: 80 }) ?? 0;
 export const MaxContentWidth = 800;
+
+// --- Lisibilité des couleurs ---------------------------------------------
+function hexToRgb(hex: string): { r: number; g: number; b: number } {
+  const h = hex.replace('#', '');
+  return {
+    r: parseInt(h.slice(0, 2), 16),
+    g: parseInt(h.slice(2, 4), 16),
+    b: parseInt(h.slice(4, 6), 16),
+  };
+}
+function rgbToHex(r: number, g: number, b: number): string {
+  const c = (n: number) => Math.round(Math.max(0, Math.min(255, n))).toString(16).padStart(2, '0');
+  return `#${c(r)}${c(g)}${c(b)}`;
+}
+function relLuminance({ r, g, b }: { r: number; g: number; b: number }): number {
+  const f = (v: number) => {
+    const s = v / 255;
+    return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
+  };
+  return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b);
+}
+/** Contraste d'un texte blanc sur la couleur donnée (ratio WCAG). */
+function contrastWithWhite(rgb: { r: number; g: number; b: number }): number {
+  return 1.05 / (relLuminance(rgb) + 0.05);
+}
+/**
+ * Renvoie une version de la couleur assez foncée pour qu'un texte blanc reste
+ * lisible dessus (contraste WCAG >= 4.5), en préservant la teinte. Les couleurs
+ * déjà sombres sont renvoyées telles quelles ; les claires (jaune, cyan…) sont
+ * assombries juste ce qu'il faut.
+ */
+export function readableTileColor(hex: string, minContrast = 4.5): string {
+  const base = hexToRgb(hex);
+  let rgb = { ...base };
+  let t = 0;
+  while (contrastWithWhite(rgb) < minContrast && t < 1) {
+    t += 0.04;
+    rgb = { r: base.r * (1 - t), g: base.g * (1 - t), b: base.b * (1 - t) };
+  }
+  return rgbToHex(rgb.r, rgb.g, rgb.b);
+}

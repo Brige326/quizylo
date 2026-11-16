@@ -8,7 +8,6 @@ import {
   KeyboardAvoidingView,
   Modal,
   Platform,
-  Pressable,
   StyleSheet,
   TextInput,
   View,
@@ -21,7 +20,7 @@ import { Screen } from '@/components/ui/Screen';
 import { Tappable } from '@/components/ui/Tappable';
 import { Text } from '@/components/ui/Text';
 import { TopBar } from '@/components/TopBar';
-import { Palette, Radius, Spacing, Type } from '@/constants/theme';
+import { Palette, Radius, Spacing, Type, readableTileColor } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth';
 import {
   createSubject,
@@ -289,24 +288,25 @@ function SubjectCard({
 }) {
   const count = subject.chapter_count ?? 0;
   const initial = subject.name.trim().charAt(0).toUpperCase() || '?';
+  const tile = readableTileColor(subject.color);
   return (
-    <Tappable style={styles.card} onPress={onOpen} haptic={false}>
-      <View style={[styles.cardStripe, { backgroundColor: subject.color }]} />
-      <View style={[styles.cardBadge, { backgroundColor: subject.color + '22' }]}>
-        <Text style={[styles.cardBadgeText, { color: subject.color }]}>{initial}</Text>
+    <Tappable
+      style={[styles.card, { backgroundColor: tile }]}
+      onPress={onOpen}
+      onLongPress={onOptions}
+      delayLongPress={300}
+      haptic={false}>
+      <View style={styles.cardBadge}>
+        <Text style={styles.cardBadgeText}>{initial}</Text>
       </View>
       <View style={styles.cardBody}>
         <Text variant="bodyStrong" numberOfLines={1} style={styles.cardName}>
           {subject.name}
         </Text>
-        <Text variant="small" color={Palette.textMuted} style={styles.cardMeta}>
+        <Text variant="small" style={styles.cardMeta}>
           {count === 0 ? 'Aucun chapitre' : `${count} chapitre${count > 1 ? 's' : ''}`}
         </Text>
       </View>
-      <Pressable hitSlop={10} onPress={onOptions} style={styles.cardOptions} accessibilityLabel="Options">
-        <Ionicons name="ellipsis-horizontal" size={20} color={Palette.textMuted} />
-      </Pressable>
-      <Ionicons name="chevron-forward" size={18} color={Palette.textMuted} />
     </Tappable>
   );
 }
@@ -354,32 +354,23 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.md,
-    backgroundColor: Palette.surface,
     borderRadius: Radius.lg,
-    paddingRight: Spacing.md,
-    paddingLeft: Spacing.md + 6,
-    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.md + 2,
     overflow: 'hidden',
   },
-  cardStripe: {
-    position: 'absolute',
-    left: 0,
-    top: 0,
-    bottom: 0,
-    width: 4,
-  },
   cardBadge: {
-    width: 40,
-    height: 40,
+    width: 44,
+    height: 44,
     borderRadius: Radius.md,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.22)',
   },
-  cardBadgeText: { ...Type.heading },
+  cardBadgeText: { ...Type.heading, color: '#FFFFFF' },
   cardBody: { flex: 1, gap: 2 },
-  cardName: {},
-  cardMeta: {},
-  cardOptions: { padding: 2 },
+  cardName: { color: '#FFFFFF' },
+  cardMeta: { color: 'rgba(255,255,255,0.85)' },
   // Page plein écran
   page: { flex: 1, backgroundColor: Palette.background },
   pageHeader: {
