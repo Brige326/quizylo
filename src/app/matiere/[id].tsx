@@ -29,7 +29,6 @@ import {
   renameChapter,
   type Chapter,
 } from '@/lib/courses';
-import { comingSoon } from '@/lib/ui';
 
 export default function MatiereDetailScreen() {
   const { session } = useAuth();
@@ -169,7 +168,12 @@ export default function MatiereDetailScreen() {
           renderItem={({ item, index }) => (
             <Tappable
               style={styles.row}
-              onPress={() => comingSoon('Documents du chapitre')}
+              onPress={() =>
+                router.push({
+                  pathname: '/chapitre/[id]',
+                  params: { id: item.id, subjectId, name: item.name, color },
+                })
+              }
               haptic={false}>
               <View style={[styles.index, { backgroundColor: color + '22' }]}>
                 <Text variant="bodyStrong" color={color}>

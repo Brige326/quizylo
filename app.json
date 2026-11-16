@@ -36,6 +36,13 @@
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 76
         }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Quizylo accède à tes photos pour importer tes cours.",
+          "cameraPermission": "Quizylo utilise l'appareil photo pour prendre tes cours en photo."
+        }
       ]
     ],
     "experiments": {
