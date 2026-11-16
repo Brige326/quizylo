@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -39,7 +39,6 @@ export default function MesCoursScreen() {
 
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [loading, setLoading] = useState(true);
-  const [query, setQuery] = useState('');
 
   // Modale de création / renommage.
   const [modalOpen, setModalOpen] = useState(false);
@@ -66,12 +65,6 @@ export default function MesCoursScreen() {
   useEffect(() => {
     load();
   }, [load]);
-
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return subjects;
-    return subjects.filter((s) => s.name.toLowerCase().includes(q));
-  }, [subjects, query]);
 
   const openCreate = () => {
     setEditing(null);
@@ -177,31 +170,18 @@ export default function MesCoursScreen() {
               : `${subjects.length} matière${subjects.length > 1 ? 's' : ''}`}
           </Text>
         </View>
+        {subjects.length > 0 ? (
+          <Tappable
+            style={styles.searchBtn}
+            onPress={() => router.push('/recherche-cours')}
+            accessibilityLabel="Rechercher">
+            <Ionicons name="search" size={22} color={Palette.text} />
+          </Tappable>
+        ) : null}
         <Tappable style={styles.addBtn} onPress={openCreate} accessibilityLabel="Ajouter une matière">
           <Ionicons name="add" size={26} color={Palette.onPrimary} />
         </Tappable>
       </View>
-
-      {/* Recherche interne (contenus personnels uniquement). */}
-      {subjects.length > 0 ? (
-        <View style={styles.searchField}>
-          <Ionicons name="search" size={18} color={Palette.textMuted} />
-          <TextInput
-            style={styles.input}
-            placeholder="Rechercher une matière…"
-            placeholderTextColor={Palette.textMuted}
-            value={query}
-            onChangeText={setQuery}
-            autoCapitalize="none"
-            returnKeyType="search"
-          />
-          {query ? (
-            <Tappable onPress={() => setQuery('')} scaleTo={0.9} accessibilityLabel="Effacer">
-              <Ionicons name="close-circle" size={18} color={Palette.textMuted} />
-            </Tappable>
-          ) : null}
-        </View>
-      ) : null}
 
       {loading ? (
         <View style={styles.center}>
@@ -214,15 +194,9 @@ export default function MesCoursScreen() {
           subtitle="Crée ta première matière pour organiser tes cours, tes documents et tes révisions.">
           <Button label="Ajouter une matière" onPress={openCreate} />
         </EmptyState>
-      ) : filtered.length === 0 ? (
-        <View style={styles.center}>
-          <Text variant="body" color={Palette.textMuted}>
-            Aucune matière pour « {query.trim()} ».
-          </Text>
-        </View>
       ) : (
         <FlatList
-          data={filtered}
+          data={subjects}
           keyExtractor={(s) => s.id}
           numColumns={2}
           columnWrapperStyle={styles.gridRow}
@@ -346,6 +320,14 @@ const styles = StyleSheet.create({
     height: 44,
     borderRadius: 22,
     backgroundColor: Palette.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  searchBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: Palette.surface,
     alignItems: 'center',
     justifyContent: 'center',
   },

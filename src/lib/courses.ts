@@ -266,6 +266,86 @@ export async function renameDocument(id: string, title: string): Promise<void> {
   if (error) throw error;
 }
 
+/* ---------- Recherche interne (MC-5) ---------- */
+
+export type CourseSearchResult =
+  | { type: 'subject'; id: string; title: string; color: string }
+  | { type: 'chapter'; id: string; title: string; subjectId: string; color: string }
+  | {
+      type: 'document';
+      id: string;
+      title: string;
+      kind: DocKind;
+      chapterId: string | null;
+      chapterName: string;
+      subjectId: string;
+      color: string;
+    }
+  | { type: 'generated'; id: string; title: string; kind: GenKind };
+
+/** Recherche interne couvrant matières, chapitres, documents et contenus générés de l'utilisateur. */
+export async function searchCourses(userId: string, query: string): Promise<CourseSearchResult[]> {
+  const raw = query.trim();
+  const q = raw.toLowerCase();
+  if (!q) return [];
+
+  const [subjectsRes, chaptersRes, docsRes, genRes] = await Promise.all([
+    supabase.from('subjects').select('id,name,color').eq('user_id', userId),
+    supabase.from('chapters').select('id,name,subject_id').eq('user_id', userId),
+    supabase.from('documents').select('id,title,kind,chapter_id,subject_id').eq('user_id', userId).ilike('title', `%${raw}%`),
+    supabase.from('generated_content').select('id,title,kind').eq('user_id', userId).ilike('title', `%${raw}%`),
+  ]);
+
+  const subjects = (subjectsRes.data ?? []) as { id: string; name: string; color: string }[];
+  const chapters = (chaptersRes.data ?? []) as { id: string; name: string; subject_id: string }[];
+  const docRows = (docsRes.data ?? []) as {
+    id: string;
+    title: string;
+    kind: DocKind;
+    chapter_id: string | null;
+    subject_id: string;
+  }[];
+  const genRows = (genRes.data ?? []) as { id: string; title: string; kind: GenKind }[];
+
+  const subjMap = new Map(subjects.map((s) => [s.id, s]));
+  const chMap = new Map(chapters.map((c) => [c.id, c]));
+  const DEFAULT_COLOR = '#22E07B';
+  const results: CourseSearchResult[] = [];
+
+  subjects
+    .filter((s) => s.name.toLowerCase().includes(q))
+    .forEach((s) => results.push({ type: 'subject', id: s.id, title: s.name, color: s.color }));
+
+  chapters
+    .filter((c) => c.name.toLowerCase().includes(q))
+    .forEach((c) =>
+      results.push({
+        type: 'chapter',
+        id: c.id,
+        title: c.name,
+        subjectId: c.subject_id,
+        color: subjMap.get(c.subject_id)?.color ?? DEFAULT_COLOR,
+      }),
+    );
+
+  docRows.forEach((d) =>
+    results.push({
+      type: 'document',
+      id: d.id,
+      title: d.title,
+      kind: d.kind,
+      chapterId: d.chapter_id,
+      chapterName: d.chapter_id ? chMap.get(d.chapter_id)?.name ?? '' : '',
+      subjectId: d.subject_id,
+      color: subjMap.get(d.subject_id)?.color ?? DEFAULT_COLOR,
+    }),
+  );
+
+  genRows.forEach((g) => results.push({ type: 'generated', id: g.id, title: g.title, kind: g.kind }));
+
+  return results;
+}
+
 /* ---------- Contenus générés par IA (MC-4) ---------- */
 
 export type GenKind = 'quiz' | 'fiche' | 'flashcards' | 'resume' | 'examen';

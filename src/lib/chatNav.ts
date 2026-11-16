@@ -5,7 +5,7 @@
  */
 export type ChatNavAction =
   | { type: 'open'; id: string }
-  | { type: 'new' }
+  | { type: 'new'; seed?: string }
   | { type: 'deleted'; id: string };
 
 const listeners = new Set<(a: ChatNavAction) => void>();
@@ -14,8 +14,9 @@ export function openConversation(id: string) {
   listeners.forEach((l) => l({ type: 'open', id }));
 }
 
-export function startNewChat() {
-  listeners.forEach((l) => l({ type: 'new' }));
+/** Nouveau chat. `seed` pré-remplit la barre de saisie (ex. tuteur IA depuis un chapitre). */
+export function startNewChat(seed?: string) {
+  listeners.forEach((l) => l({ type: 'new', seed }));
 }
 
 export function notifyConversationDeleted(id: string) {

@@ -59,6 +59,7 @@ function RootNavigator() {
       <Stack.Screen name="matiere/[id]" options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="chapitre/[id]" options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="revision/[id]" options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="recherche-cours" options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="account" options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="abonnement" options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="ai-memory" options={{ animation: 'slide_from_right' }} />

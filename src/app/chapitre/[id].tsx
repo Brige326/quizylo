@@ -26,6 +26,7 @@ import { Tappable } from '@/components/ui/Tappable';
 import { Text } from '@/components/ui/Text';
 import { Palette, Radius, Spacing, Type } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth';
+import { startNewChat } from '@/lib/chatNav';
 import {
   createNote,
   deleteDocument,
@@ -159,6 +160,12 @@ export default function ChapitreDocumentsScreen() {
   const back = () => {
     if (router.canGoBack()) router.back();
     else router.replace('/(tabs)/cours');
+  };
+
+  // Tuteur IA : on pré-remplit l'accueil (chat) d'une question sur ce chapitre, puis on y va.
+  const askTutor = () => {
+    startNewChat(`Explique-moi ce chapitre : ${chapterName}`);
+    router.navigate('/(tabs)');
   };
 
   /* ---------- Import ---------- */
@@ -459,6 +466,12 @@ export default function ChapitreDocumentsScreen() {
             {chapterName}
           </Text>
         </View>
+        <Tappable
+          style={styles.tutorBtn}
+          onPress={askTutor}
+          accessibilityLabel="Demander au tuteur IA">
+          <Ionicons name="chatbubble-ellipses-outline" size={22} color={Palette.text} />
+        </Tappable>
         <Tappable
           style={[styles.addBtn, { backgroundColor: color }]}
           onPress={() => (tab === 'docs' ? setAddOpen(true) : setGenKindOpen(true))}
@@ -833,6 +846,14 @@ const styles = StyleSheet.create({
   headerTitle: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
   dot: { width: 12, height: 12, borderRadius: 6 },
   addBtn: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
+  tutorBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: Palette.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: Spacing.xl },
   list: { paddingHorizontal: Spacing.lg, paddingVertical: Spacing.sm, gap: Spacing.sm },
   row: {

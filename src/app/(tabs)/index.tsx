@@ -162,8 +162,14 @@ export default function AccueilScreen() {
   useEffect(
     () =>
       subscribeChatNav((a) => {
-        if (a.type === 'new') resetChat();
-        else if (a.type === 'open') loadConversation(a.id);
+        if (a.type === 'new') {
+          resetChat();
+          if (a.seed) {
+            // Tuteur IA depuis un chapitre : on pré-remplit la barre, l'utilisateur relit puis envoie.
+            setInput(a.seed);
+            setFocused(true);
+          }
+        } else if (a.type === 'open') loadConversation(a.id);
         else if (a.type === 'deleted' && convIdRef.current === a.id) resetChat();
       }),
     [resetChat, loadConversation],
