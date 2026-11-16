@@ -139,8 +139,10 @@ export default function ChapitreLeconsScreen() {
   };
 
   const openLesson = (l: Lesson) => {
-    // Le contenu de la leçon (texte, PDF, photos) arrive à la prochaine étape.
-    Alert.alert(l.title, 'Le contenu de la leçon (texte, PDF, photos) arrive à la prochaine étape.');
+    router.push({
+      pathname: '/lecon/[id]',
+      params: { id: l.id, name: l.title, color },
+    });
   };
 
   const back = () => {

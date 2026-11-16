@@ -138,6 +138,14 @@ export async function deleteChapter(id: string): Promise<void> {
 
 /* ---------- Leçons (chapitres → leçons) ---------- */
 
+export type LessonBlockType = 'heading' | 'subheading' | 'text';
+
+export type LessonBlock = {
+  id: string;
+  type: LessonBlockType;
+  text: string;
+};
+
 export type Lesson = {
   id: string;
   user_id: string;
@@ -145,6 +153,7 @@ export type Lesson = {
   chapter_id: string;
   title: string;
   position: number;
+  blocks: LessonBlock[];
   created_at: string;
   updated_at: string;
 };
@@ -157,7 +166,24 @@ export async function listLessons(chapterId: string): Promise<Lesson[]> {
     .order('position', { ascending: true })
     .order('created_at', { ascending: true });
   if (error) throw error;
-  return (data ?? []) as Lesson[];
+  return ((data ?? []) as any[]).map((r) => ({ ...r, blocks: r.blocks ?? [] })) as Lesson[];
+}
+
+export async function getLesson(id: string): Promise<Lesson | null> {
+  const { data, error } = await supabase.from('lessons').select('*').eq('id', id).single();
+  if (error) {
+    if ((error as any).code === 'PGRST116') return null;
+    throw error;
+  }
+  return { ...(data as any), blocks: (data as any).blocks ?? [] } as Lesson;
+}
+
+export async function saveLessonBlocks(id: string, blocks: LessonBlock[]): Promise<void> {
+  const { error } = await supabase
+    .from('lessons')
+    .update({ blocks, updated_at: new Date().toISOString() })
+    .eq('id', id);
+  if (error) throw error;
 }
 
 export async function createLesson(
