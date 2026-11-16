@@ -21,7 +21,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
 
 import { Screen } from '@/components/ui/Screen';
-import { Tappable } from '@/components/ui/Tappable';
 import { Text } from '@/components/ui/Text';
 import { Palette, Radius, Spacing, Type } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth';
@@ -359,13 +358,11 @@ export default function LeconScreen() {
     if (b.type === 'image') {
       const u = b.path ? urls[b.path] : undefined;
       return (
-        <Tappable
+        <Pressable
           key={b.id}
           onPress={() => u && setViewer(u)}
           onLongPress={() => blockMenu(b)}
-          delayLongPress={250}
-          haptic={false}
-          scaleTo={0.99}>
+          delayLongPress={250}>
           <View style={styles.imageWrap}>
             {u ? (
               <Image source={{ uri: u }} style={styles.image} resizeMode="cover" />
@@ -375,18 +372,16 @@ export default function LeconScreen() {
               </View>
             )}
           </View>
-        </Tappable>
+        </Pressable>
       );
     }
     if (b.type === 'pdf') {
       return (
-        <Tappable
+        <Pressable
           key={b.id}
           onPress={() => openPdf(b)}
           onLongPress={() => blockMenu(b)}
-          delayLongPress={250}
-          haptic={false}
-          scaleTo={0.99}>
+          delayLongPress={250}>
           <View style={styles.pdfCard}>
             <View style={[styles.pdfIcon, { backgroundColor: color + '22' }]}>
               <Ionicons name="document-text" size={20} color={color} />
@@ -396,16 +391,14 @@ export default function LeconScreen() {
             </Text>
             <Ionicons name="open-outline" size={18} color={Palette.textMuted} />
           </View>
-        </Tappable>
+        </Pressable>
       );
     }
     return (
-      <Tappable
+      <Pressable
         key={b.id}
         onLongPress={() => blockMenu(b)}
-        delayLongPress={250}
-        haptic={false}
-        scaleTo={1}>
+        delayLongPress={250}>
         <TextInput
           style={[
             styles.block,
@@ -423,7 +416,7 @@ export default function LeconScreen() {
           autoFocus={focusId === b.id}
           multiline
         />
-      </Tappable>
+      </Pressable>
     );
   };
 
@@ -433,9 +426,9 @@ export default function LeconScreen() {
     <Screen>
       {/* En-tête */}
       <View style={[styles.header, { paddingTop: insets.top + Spacing.xs }]}>
-        <Tappable onPress={back} hitSlop={12} scaleTo={0.9} accessibilityLabel="Retour">
+        <Pressable onPress={back} hitSlop={12} accessibilityLabel="Retour">
           <Ionicons name="chevron-back" size={26} color={Palette.text} />
-        </Tappable>
+        </Pressable>
         <View style={styles.headerRight}>
           <View style={styles.saveBadge}>
             {saveState === 'saving' ? (
@@ -455,47 +448,37 @@ export default function LeconScreen() {
             ) : null}
           </View>
           {!loading && tab === 'notes' && blocks.length > 1 ? (
-            <Tappable
+            <Pressable
               onPress={() => setReordering((r) => !r)}
               hitSlop={10}
-              scaleTo={0.9}
               accessibilityLabel="Réorganiser">
               <Text variant="bodyStrong" color={reordering ? color : Palette.textSecondary}>
                 {reordering ? 'Terminé' : 'Réorganiser'}
               </Text>
-            </Tappable>
+            </Pressable>
           ) : null}
         </View>
       </View>
 
-      {/* TEMP DEBUG */}
-      <View style={{ backgroundColor: '#1565C0', paddingVertical: 6, paddingHorizontal: 12 }}>
-        <Text style={{ color: '#FFFFFF', fontSize: 12 }}>
-          {`DBG load=${String(loading)} tab=${tab} blocs=${blocks.length} bar=${!loading && tab === 'notes' && !reordering ? 'OUI' : 'non'}`}
-        </Text>
-      </View>
-
       {/* Bascule Notes / Ressources */}
-      <View style={[styles.tabs, { backgroundColor: '#C62828' }]}>
-          <Tappable
+      <View style={styles.tabs}>
+          <Pressable
             style={[styles.tab, tab === 'notes' && { backgroundColor: Palette.primarySurface }]}
-            onPress={() => setTab('notes')}
-            scaleTo={0.96}>
+            onPress={() => setTab('notes')}>
             <Text variant="small" color={tab === 'notes' ? color : Palette.textSecondary}>
               Notes
             </Text>
-          </Tappable>
-          <Tappable
+          </Pressable>
+          <Pressable
             style={[styles.tab, tab === 'resources' && { backgroundColor: Palette.primarySurface }]}
             onPress={() => {
               setReordering(false);
               setTab('resources');
-            }}
-            scaleTo={0.96}>
+            }}>
             <Text variant="small" color={tab === 'resources' ? color : Palette.textSecondary}>
               Ressources
             </Text>
-          </Tappable>
+          </Pressable>
         </View>
 
       {loading ? (
@@ -630,96 +613,89 @@ export default function LeconScreen() {
       {!loading && tab === 'notes' && !reordering ? (
         focusedBlock ? (
             <View style={[styles.toolbar, { paddingBottom: insets.bottom + Spacing.sm }]}>
-              <Tappable
+              <Pressable
                 style={[styles.fmtBtn, focusedBlock.type === 'heading' && styles.fmtActive]}
                 onPress={() => changeType(focusedBlock.id, 'heading')}
-                scaleTo={0.9}
                 accessibilityLabel="Titre">
                 <Ionicons
                   name="text"
                   size={19}
                   color={focusedBlock.type === 'heading' ? color : Palette.text}
                 />
-              </Tappable>
-              <Tappable
+              </Pressable>
+              <Pressable
                 style={[styles.fmtBtn, focusedBlock.type === 'subheading' && styles.fmtActive]}
                 onPress={() => changeType(focusedBlock.id, 'subheading')}
-                scaleTo={0.9}
                 accessibilityLabel="Sous-titre">
                 <Ionicons
                   name="text-outline"
                   size={17}
                   color={focusedBlock.type === 'subheading' ? color : Palette.text}
                 />
-              </Tappable>
-              <Tappable
+              </Pressable>
+              <Pressable
                 style={[styles.fmtBtn, focusedBlock.type === 'text' && styles.fmtActive]}
                 onPress={() => changeType(focusedBlock.id, 'text')}
-                scaleTo={0.9}
                 accessibilityLabel="Texte">
                 <Ionicons
                   name="reorder-four-outline"
                   size={18}
                   color={focusedBlock.type === 'text' ? color : Palette.text}
                 />
-              </Tappable>
+              </Pressable>
               <View style={styles.fmtSep} />
-              <Tappable
+              <Pressable
                 style={styles.fmtBtn}
                 onPress={() => setColorPicker(focusedBlock)}
-                scaleTo={0.9}
                 accessibilityLabel="Couleur">
                 <View style={[styles.fmtColorDot, { backgroundColor: focusedBlock.color ?? '#FFFFFF' }]} />
-              </Tappable>
-              <Tappable
+              </Pressable>
+              <Pressable
                 style={styles.fmtBtn}
                 onPress={() => setFontPicker(focusedBlock)}
-                scaleTo={0.9}
                 accessibilityLabel="Police">
                 <Text style={styles.fontBtnLabel}>Aa</Text>
-              </Tappable>
-              <Tappable
+              </Pressable>
+              <Pressable
                 style={styles.fmtBtn}
                 onPress={() => confirmRemove(focusedBlock)}
-                scaleTo={0.9}
                 accessibilityLabel="Supprimer">
                 <Ionicons name="trash-outline" size={18} color={Palette.textMuted} />
-              </Tappable>
+              </Pressable>
               <View style={{ flex: 1 }} />
-              <Tappable
+              <Pressable
                 style={[styles.fmtBtn, styles.fmtAdd]}
                 onPress={insertMenu}
-                scaleTo={0.9}
                 accessibilityLabel="Insérer">
                 <Ionicons name="add" size={22} color={Palette.onPrimary} />
-              </Tappable>
+              </Pressable>
             </View>
           ) : (
             <View style={[styles.toolbar, { paddingBottom: insets.bottom + Spacing.sm }]}>
-              <Tappable style={styles.tool} onPress={() => addTextBlock('heading')} scaleTo={0.92}>
+              <Pressable style={styles.tool} onPress={() => addTextBlock('heading')}>
                 <Ionicons name="text" size={18} color={Palette.text} />
                 <Text variant="small" color={Palette.textSecondary}>
                   Titre
                 </Text>
-              </Tappable>
-              <Tappable style={styles.tool} onPress={() => addTextBlock('subheading')} scaleTo={0.92}>
+              </Pressable>
+              <Pressable style={styles.tool} onPress={() => addTextBlock('subheading')}>
                 <Ionicons name="text-outline" size={18} color={Palette.text} />
                 <Text variant="small" color={Palette.textSecondary}>
                   Sous-titre
                 </Text>
-              </Tappable>
-              <Tappable style={styles.tool} onPress={() => addTextBlock('text')} scaleTo={0.92}>
+              </Pressable>
+              <Pressable style={styles.tool} onPress={() => addTextBlock('text')}>
                 <Ionicons name="reorder-four-outline" size={18} color={Palette.text} />
                 <Text variant="small" color={Palette.textSecondary}>
                   Texte
                 </Text>
-              </Tappable>
-              <Tappable style={styles.tool} onPress={attachMenu} scaleTo={0.92}>
+              </Pressable>
+              <Pressable style={styles.tool} onPress={attachMenu}>
                 <Ionicons name="attach" size={18} color={Palette.text} />
                 <Text variant="small" color={Palette.textSecondary}>
                   Joindre
                 </Text>
-              </Tappable>
+              </Pressable>
             </View>
           )
       ) : null}
@@ -820,19 +796,18 @@ export default function LeconScreen() {
       <Modal visible={!!pdfViewer} animationType="slide" onRequestClose={() => setPdfViewer(null)}>
         <View style={styles.pdfViewer}>
           <View style={[styles.pdfBar, { paddingTop: insets.top + Spacing.xs }]}>
-            <Tappable onPress={() => setPdfViewer(null)} hitSlop={12} scaleTo={0.9} accessibilityLabel="Fermer">
+            <Pressable onPress={() => setPdfViewer(null)} hitSlop={12} accessibilityLabel="Fermer">
               <Ionicons name="close" size={26} color={Palette.text} />
-            </Tappable>
+            </Pressable>
             <Text variant="bodyStrong" numberOfLines={1} style={{ flex: 1, textAlign: 'center' }}>
               {pdfViewer?.name}
             </Text>
-            <Tappable
+            <Pressable
               onPress={() => pdfViewer && Linking.openURL(pdfViewer.url)}
               hitSlop={12}
-              scaleTo={0.9}
               accessibilityLabel="Ouvrir ailleurs">
               <Ionicons name="open-outline" size={22} color={Palette.text} />
-            </Tappable>
+            </Pressable>
           </View>
           {pdfViewer ? (
             <WebView
@@ -944,7 +919,7 @@ const styles = StyleSheet.create({
     paddingTop: Spacing.sm,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: Palette.border,
-    backgroundColor: '#AD1457',
+    backgroundColor: Palette.background,
   },
   tool: {
     flex: 1,
