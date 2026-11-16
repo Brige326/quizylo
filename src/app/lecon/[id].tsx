@@ -15,6 +15,7 @@ import {
   ScrollView,
   StyleSheet,
   TextInput,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -61,6 +62,8 @@ export default function LeconScreen() {
   const [viewer, setViewer] = useState<string | null>(null);
   const [reordering, setReordering] = useState(false);
   const [colorPicker, setColorPicker] = useState<LessonBlock | null>(null);
+  const [tab, setTab] = useState<'notes' | 'resources'>('notes');
+  const { width: screenW } = useWindowDimensions();
 
   // Refs pour l'autosave (évite les closures périmées).
   const blocksRef = useRef<LessonBlock[]>([]);
@@ -417,7 +420,7 @@ export default function LeconScreen() {
               </>
             ) : null}
           </View>
-          {!loading && blocks.length > 1 ? (
+          {!loading && tab === 'notes' && blocks.length > 1 ? (
             <Tappable
               onPress={() => setReordering((r) => !r)}
               hitSlop={10}
@@ -431,10 +434,96 @@ export default function LeconScreen() {
         </View>
       </View>
 
+      {/* Bascule Notes / Ressources */}
+      {!loading ? (
+        <View style={styles.tabs}>
+          <Tappable
+            style={[styles.tab, tab === 'notes' && { backgroundColor: Palette.primarySurface }]}
+            onPress={() => setTab('notes')}
+            scaleTo={0.96}>
+            <Text variant="small" color={tab === 'notes' ? color : Palette.textSecondary}>
+              Notes
+            </Text>
+          </Tappable>
+          <Tappable
+            style={[styles.tab, tab === 'resources' && { backgroundColor: Palette.primarySurface }]}
+            onPress={() => {
+              setReordering(false);
+              setTab('resources');
+            }}
+            scaleTo={0.96}>
+            <Text variant="small" color={tab === 'resources' ? color : Palette.textSecondary}>
+              Ressources
+            </Text>
+          </Tappable>
+        </View>
+      ) : null}
+
       {loading ? (
         <View style={styles.center}>
           <ActivityIndicator color={color} />
         </View>
+      ) : tab === 'resources' ? (
+        (() => {
+          const images = blocks.filter((b) => b.type === 'image');
+          const pdfs = blocks.filter((b) => b.type === 'pdf');
+          const thumb = (screenW - Spacing.lg * 2 - Spacing.sm * 2) / 3;
+          return (
+            <ScrollView
+              style={{ flex: 1 }}
+              contentContainerStyle={styles.body}
+              showsVerticalScrollIndicator={false}>
+              <Text variant="heading" style={{ marginBottom: Spacing.sm }}>
+                Images
+              </Text>
+              {images.length === 0 ? (
+                <Text variant="small" color={Palette.textMuted}>
+                  Aucune image pour l’instant.
+                </Text>
+              ) : (
+                <View style={styles.grid}>
+                  {images.map((b) => {
+                    const u = b.path ? urls[b.path] : undefined;
+                    return (
+                      <Pressable
+                        key={b.id}
+                        onPress={() => u && setViewer(u)}
+                        style={[styles.thumb, { width: thumb, height: thumb }]}>
+                        {u ? (
+                          <Image source={{ uri: u }} style={styles.thumbImg} resizeMode="cover" />
+                        ) : (
+                          <ActivityIndicator color={color} />
+                        )}
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              )}
+
+              <Text variant="heading" style={{ marginTop: Spacing.xl, marginBottom: Spacing.sm }}>
+                PDF
+              </Text>
+              {pdfs.length === 0 ? (
+                <Text variant="small" color={Palette.textMuted}>
+                  Aucun PDF pour l’instant.
+                </Text>
+              ) : (
+                pdfs.map((b) => (
+                  <Pressable key={b.id} onPress={() => openPdf(b)} style={styles.pdfCard}>
+                    <View style={[styles.pdfIcon, { backgroundColor: color + '22' }]}>
+                      <Ionicons name="document-text" size={20} color={color} />
+                    </View>
+                    <Text variant="bodyStrong" numberOfLines={1} style={{ flex: 1 }}>
+                      {b.name ?? 'Document PDF'}
+                    </Text>
+                    <Ionicons name="open-outline" size={18} color={Palette.textMuted} />
+                  </Pressable>
+                ))
+              )}
+              <View style={{ height: 24 }} />
+            </ScrollView>
+          );
+        })()
       ) : reordering ? (
         <ScrollView
           style={{ flex: 1 }}
@@ -660,6 +749,24 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.sm,
   },
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
+  tabs: { flexDirection: 'row', gap: Spacing.sm, paddingHorizontal: Spacing.lg, paddingBottom: Spacing.sm },
+  tab: {
+    flex: 1,
+    height: 38,
+    borderRadius: Radius.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Palette.surface,
+  },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
+  thumb: {
+    borderRadius: Radius.md,
+    overflow: 'hidden',
+    backgroundColor: Palette.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  thumbImg: { width: '100%', height: '100%' },
   saveBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 18 },
   reorderRow: {
     flexDirection: 'row',
