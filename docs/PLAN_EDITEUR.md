@@ -222,6 +222,10 @@ test appareil.
 (enrobe la saisie dans `\ce{}`). Auto-test navigateur : `2H2 + O2 -> 2H2O` et `CO2`
 rendus (indices + flèche de réaction, capture), 0 erreur. `tsc` = 0, export web OK.
 
+**S16 — Saisie formules multiplateforme** : modale custom (RN `Modal` + `TextInput`,
+iOS + Android) remplaçant l'`Alert.prompt` iOS-only pour maths et chimie. `tsc` = 0,
+export web OK.
+
 ### Limite de test (honnête)
 
 Le rendu natif dans la WebView iOS (Expo Go sur iPhone) n'est pas testable depuis

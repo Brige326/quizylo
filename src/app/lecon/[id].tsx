@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   Alert,
   Image,
+  KeyboardAvoidingView,
   Linking,
   Modal,
   Platform,
@@ -78,6 +79,9 @@ export default function LeconScreen() {
   const [title, setTitle] = useState(params.name ?? '');
   const [blocks, setBlocks] = useState<LessonBlock[]>([]);
   const [content, setContent] = useState<Record<string, unknown> | null>(null);
+  // Saisie de formule (maths/chimie) — modale compatible iOS et Android.
+  const [formula, setFormula] = useState<{ kind: 'math' | 'chem' } | null>(null);
+  const [formulaText, setFormulaText] = useState('');
   const [saveState, setSaveState] = useState<SaveState>('saved');
   const [focusId, setFocusId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -323,49 +327,24 @@ export default function LeconScreen() {
     ]);
   };
 
-  const insertMathPrompt = () => {
-    if (Platform.OS !== 'ios') {
-      Alert.alert('Formule', 'La saisie de formule sera disponible sur Android prochainement.');
-      return;
-    }
-    Alert.prompt(
-      'Insérer une formule',
-      'Écris la formule en LaTeX (ex. x^2 + 1, \\frac{a}{b}).',
-      [
-        { text: 'Annuler', style: 'cancel' },
-        {
-          text: 'Insérer',
-          onPress: (txt?: string) => {
-            const latex = (txt ?? '').trim();
-            if (latex) richRef.current?.insertMath(latex, false);
-          },
-        },
-      ],
-      'plain-text',
-    );
+  const openFormula = (kind: 'math' | 'chem') => {
+    setFormulaText('');
+    setFormula({ kind });
   };
 
-  const insertChemPrompt = () => {
-    if (Platform.OS !== 'ios') {
-      Alert.alert('Chimie', 'La saisie sera disponible sur Android prochainement.');
-      return;
+  const submitFormula = () => {
+    const t = formulaText.trim();
+    if (t && formula) {
+      if (formula.kind === 'chem') richRef.current?.insertMath(`\\ce{${t}}`, true);
+      else richRef.current?.insertMath(t, false);
     }
-    Alert.prompt(
-      'Formule chimique',
-      'Écris la réaction/molécule (ex. 2H2 + O2 -> 2H2O, H2SO4).',
-      [
-        { text: 'Annuler', style: 'cancel' },
-        {
-          text: 'Insérer',
-          onPress: (txt?: string) => {
-            const eq = (txt ?? '').trim();
-            if (eq) richRef.current?.insertMath(`\\ce{${eq}}`, true);
-          },
-        },
-      ],
-      'plain-text',
-    );
+    setFormula(null);
+    setFormulaText('');
   };
+
+  const insertMathPrompt = () => openFormula('math');
+
+  const insertChemPrompt = () => openFormula('chem');
 
   const attachMenuRich = () => {
     Alert.alert('Ajouter à la leçon', undefined, [
@@ -978,12 +957,86 @@ export default function LeconScreen() {
           ) : null}
         </View>
       </Modal>
+
+      {/* Modale : saisie d'une formule maths/chimie (iOS + Android) */}
+      <Modal
+        visible={!!formula}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setFormula(null)}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={{ flex: 1 }}>
+          <Pressable style={styles.sheetBackdrop} onPress={() => setFormula(null)}>
+            <Pressable style={[styles.sheet, { paddingBottom: insets.bottom + Spacing.lg }]}>
+              <Text variant="heading" style={{ marginBottom: Spacing.xs }}>
+                {formula?.kind === 'chem' ? 'Formule chimique' : 'Formule mathématique'}
+              </Text>
+              <Text variant="small" color={Palette.textMuted} style={{ marginBottom: Spacing.md }}>
+                {formula?.kind === 'chem'
+                  ? 'Ex. 2H2 + O2 -> 2H2O, H2SO4, CaCO3'
+                  : 'LaTeX — ex. x^2 + 1, \\frac{a}{b}, \\int_0^1 x\\,dx'}
+              </Text>
+              <TextInput
+                style={styles.formulaInput}
+                value={formulaText}
+                onChangeText={setFormulaText}
+                placeholder={formula?.kind === 'chem' ? '2H2 + O2 -> 2H2O' : 'x^2 + 1'}
+                placeholderTextColor={Palette.textMuted}
+                autoFocus
+                autoCapitalize="none"
+                autoCorrect={false}
+                multiline
+              />
+              <View style={styles.formulaActions}>
+                <Pressable onPress={() => setFormula(null)} style={styles.formulaBtn}>
+                  <Text variant="bodyStrong" color={Palette.textSecondary}>
+                    Annuler
+                  </Text>
+                </Pressable>
+                <Pressable
+                  onPress={submitFormula}
+                  style={[styles.formulaBtn, styles.formulaBtnPrimary]}>
+                  <Text variant="bodyStrong" color={Palette.onPrimary}>
+                    Insérer
+                  </Text>
+                </Pressable>
+              </View>
+            </Pressable>
+          </Pressable>
+        </KeyboardAvoidingView>
+      </Modal>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
   richHeader: { paddingHorizontal: Spacing.lg, paddingTop: Spacing.md },
+  formulaInput: {
+    minHeight: 48,
+    maxHeight: 140,
+    borderRadius: Radius.md,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: Palette.border,
+    backgroundColor: Palette.background,
+    color: Palette.text,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    fontSize: 16,
+    textAlignVertical: 'top',
+  },
+  formulaActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: Spacing.sm,
+    marginTop: Spacing.md,
+  },
+  formulaBtn: {
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.sm,
+    borderRadius: Radius.md,
+  },
+  formulaBtnPrimary: { backgroundColor: Palette.primary },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
