@@ -21,6 +21,7 @@ import { Tappable } from '@/components/ui/Tappable';
 import { Text } from '@/components/ui/Text';
 import { Palette, Radius, Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth';
+import { useI18n } from '@/lib/i18n';
 import {
   getCachedConversations,
   notifyConversationDeleted,
@@ -33,7 +34,8 @@ import { supabase } from '@/lib/supabase';
 type Conversation = { id: string; title: string };
 
 export default function MenuScreen() {
-  const { session, profile, isGuest, signOut, exitGuest } = useAuth();
+  const { session, profile, isGuest } = useAuth();
+  const { t } = useI18n();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { width: screenW } = useWindowDimensions();
@@ -194,7 +196,7 @@ export default function MenuScreen() {
         <MenuRow icon="timer-outline" label="Focus ensemble" badge="NOUVEAU" onPress={() => notReady()} />
 
         <Text variant="heading" style={styles.sectionTitle}>
-          Discussions précédentes
+          {t('menu.previous')}
         </Text>
         {conversations.length > 0 ? (
           conversations.map((c) => (
@@ -224,7 +226,7 @@ export default function MenuScreen() {
         <Tappable style={styles.newChat} onPress={onNewChat}>
           <Ionicons name="chatbubble-ellipses-outline" size={20} color={Palette.background} />
           <Text variant="bodyStrong" color={Palette.background}>
-            Nouveau chat
+            {t('menu.newChat')}
           </Text>
         </Tappable>
       </View>

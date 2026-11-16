@@ -10,6 +10,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { Palette } from '@/constants/theme';
 import { AuthProvider, useAuth } from '@/contexts/auth';
+import { I18nProvider } from '@/lib/i18n';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -51,6 +52,7 @@ function RootNavigator() {
       <Stack.Screen name="account" options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="abonnement" options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="ai-memory" options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="language" options={{ animation: 'slide_from_right' }} />
     </Stack>
   );
 }
@@ -60,10 +62,12 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <KeyboardProvider>
         <SafeAreaProvider>
-          <AuthProvider>
-            <StatusBar style="light" />
-            <RootNavigator />
-          </AuthProvider>
+          <I18nProvider>
+            <AuthProvider>
+              <StatusBar style="light" />
+              <RootNavigator />
+            </AuthProvider>
+          </I18nProvider>
         </SafeAreaProvider>
       </KeyboardProvider>
     </GestureHandlerRootView>

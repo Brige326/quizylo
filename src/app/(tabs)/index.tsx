@@ -27,6 +27,7 @@ import { comingSoon } from '@/lib/ui';
 import { getTabBarHeight, subscribeTabBarHeight } from '@/lib/layoutStore';
 import { subscribeChatNav } from '@/lib/chatNav';
 import { supabase } from '@/lib/supabase';
+import { useI18n } from '@/lib/i18n';
 
 type ChatMessage = { id: string; role: 'user' | 'assistant'; content: string };
 type Chip = { key: string; label: string; icon: keyof typeof Ionicons.glyphMap; color: string };
@@ -47,6 +48,7 @@ const ACTIONS: Chip[] = [
 
 export default function AccueilScreen() {
   const { profile, session, exitGuest } = useAuth();
+  const { t } = useI18n();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const userId = session?.user?.id;
@@ -263,7 +265,7 @@ export default function AccueilScreen() {
             <Mascot size={76} />
             <Animated.View style={[styles.heroCard, { opacity: heroOpacity }]} pointerEvents="none">
               <Text variant="title" center style={styles.heroTitle}>
-                Quel est le sujet de ton prochain exam ?
+                {t('home.hero')}
               </Text>
             </Animated.View>
           </Pressable>
@@ -312,7 +314,7 @@ export default function AccueilScreen() {
             <TextInput
               ref={inputRef}
               style={styles.input}
-              placeholder="Demande à Quizylo…"
+              placeholder={t('home.placeholder')}
               placeholderTextColor={Palette.textMuted}
               value={input}
               onChangeText={setInput}

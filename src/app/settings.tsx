@@ -9,11 +9,14 @@ import { Tappable } from '@/components/ui/Tappable';
 import { Text } from '@/components/ui/Text';
 import { Palette, Radius, Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth';
+import { LANGUAGES, useI18n } from '@/lib/i18n';
 
 export default function SettingsScreen() {
   const { session, profile, isGuest, signOut, exitGuest } = useAuth();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { t, lang } = useI18n();
+  const currentLang = LANGUAGES.find((l) => l.code === lang)?.label ?? 'Français';
 
   const email = session?.user?.email ?? '';
   const name = isGuest ? 'Invité' : profile?.full_name || 'Mon compte';
@@ -49,7 +52,7 @@ export default function SettingsScreen() {
         <Tappable onPress={back} hitSlop={12} scaleTo={0.9} accessibilityLabel="Retour">
           <Ionicons name="chevron-back" size={26} color={Palette.text} />
         </Tappable>
-        <Text variant="heading">Paramètres</Text>
+        <Text variant="heading">{t('settings.title')}</Text>
         <View style={{ width: 26 }} />
       </View>
 
@@ -64,68 +67,77 @@ export default function SettingsScreen() {
           <View style={{ flex: 1 }}>
             <Text variant="title">{name}</Text>
             <Text variant="small" color={Palette.textSecondary}>
-              {isGuest ? 'Non connecté' : email || handle}
+              {isGuest ? t('settings.notConnected') : email || handle}
             </Text>
           </View>
           {isGuest ? (
             <Tappable style={styles.signInBtn} onPress={onSignIn}>
               <Text variant="bodyStrong" color={Palette.onPrimary}>
-                Se connecter
+                {t('settings.signIn')}
               </Text>
             </Tappable>
           ) : null}
         </View>
 
-        <Section title="Compte">
+        <Section title={t('settings.account')}>
           <Row
             icon="person-outline"
-            label="Mes informations"
+            label={t('settings.myInfo')}
             onPress={() => router.push('/account')}
           />
           <Row
             icon="star-outline"
-            label="Abonnement"
-            value={profile?.is_pro ? 'PRO' : 'Gratuit'}
+            label={t('settings.subscription')}
+            value={profile?.is_pro ? 'PRO' : t('settings.free')}
             onPress={() => router.push('/abonnement')}
           />
         </Section>
 
-        <Section title="IA & discussions">
+        <Section title={t('settings.aiDiscussions')}>
           <Row
             icon="sparkles-outline"
-            label="Mémoire de l'IA"
+            label={t('settings.aiMemory')}
             onPress={() => router.push('/ai-memory')}
           />
           <Row
             icon="trash-outline"
-            label="Supprimer toutes les discussions"
+            label={t('settings.deleteAll')}
             danger
-            onPress={() => soon('Supprimer toutes les discussions')}
+            onPress={() => soon(t('settings.deleteAll'))}
           />
         </Section>
 
-        <Section title="Préférences">
-          <Row icon="language-outline" label="Langue" value="Français" onPress={() => soon('Langue')} />
-          <Row icon="notifications-outline" label="Notifications" onPress={() => soon('Notifications')} />
+        <Section title={t('settings.prefs')}>
+          <Row
+            icon="language-outline"
+            label={t('settings.language')}
+            value={currentLang}
+            onPress={() => router.push('/language')}
+          />
+          <Row
+            icon="notifications-outline"
+            label={t('settings.notifications')}
+            onPress={() => soon(t('settings.notifications'))}
+          />
         </Section>
 
-        <Section title="Confidentialité & aide">
+        <Section title={t('settings.privacyHelp')}>
           <Row
             icon="shield-checkmark-outline"
-            label="Protection des données"
-            onPress={() => soon('Protection des données')}
+            label={t('settings.dataProtection')}
+            onPress={() => soon(t('settings.dataProtection'))}
           />
           <Row
             icon="help-buoy-outline"
-            label="Contacter l'assistance"
-            onPress={() => soon("Contacter l'assistance")}
+            label={t('settings.support')}
+            onPress={() => soon(t('settings.support'))}
           />
-          <Row icon="information-circle-outline" label="À propos" onPress={about} />
+          <Row icon="information-circle-outline" label={t('settings.about')} onPress={about} />
         </Section>
 
         {!isGuest ? (
           <Section>
-            <Row icon="log-out-outline" label="Se déconnecter" danger onPress={onSignOut} />
+            <Row icon="log-out-outline" label={t('settings.signOut')} danger onPress={onSignOut} />
           </Section>
         ) : null}
 
