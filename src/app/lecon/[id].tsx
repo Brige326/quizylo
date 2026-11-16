@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
+import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -20,7 +21,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
 
-import { LessonRichEditor } from '@/components/LessonRichEditor';
+import { LessonRichEditor, type LessonRichEditorHandle } from '@/components/LessonRichEditor';
 import { Screen } from '@/components/ui/Screen';
 import { Text } from '@/components/ui/Text';
 import { Palette, Radius, Spacing, Type } from '@/constants/theme';
@@ -94,6 +95,7 @@ export default function LeconScreen() {
   const titleRef = useRef(title);
   const savedTitleRef = useRef(title);
   const dirtyRef = useRef(false);
+  const richRef = useRef<LessonRichEditorHandle>(null);
   blocksRef.current = blocks;
   titleRef.current = title;
 
@@ -254,6 +256,62 @@ export default function LeconScreen() {
     Alert.alert('Ajouter à la leçon', undefined, [
       { text: 'Prendre une photo', onPress: takePhoto },
       { text: 'Importer une image', onPress: pickImage },
+      { text: 'Importer un PDF', onPress: pickPdf },
+      { text: 'Annuler', style: 'cancel' },
+    ]);
+  };
+
+  // --- Mode éditeur riche : images insérées DANS le flux du texte ---
+  // Redimensionnées puis embarquées dans le document (data URI) : privé par
+  // défaut (même RLS que la leçon), pas d'URL signée qui expire.
+  const imageToDataUri = async (uri: string, width?: number): Promise<string> => {
+    const ctx = ImageManipulator.manipulate(uri);
+    if (width && width > 1400) ctx.resize({ width: 1400 });
+    const rendered = await ctx.renderAsync();
+    const out = await rendered.saveAsync({ compress: 0.6, format: SaveFormat.JPEG, base64: true });
+    return `data:image/jpeg;base64,${out.base64 ?? ''}`;
+  };
+
+  const insertInlineImage = async (asset: { uri: string; width?: number }) => {
+    setBusy(true);
+    try {
+      const src = await imageToDataUri(asset.uri, asset.width);
+      richRef.current?.insertImage(src);
+    } catch {
+      Alert.alert('Oups', "L'image n'a pas pu être insérée. Réessaie dans un instant.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const takePhotoInline = async () => {
+    const perm = await ImagePicker.requestCameraPermissionsAsync();
+    if (!perm.granted) {
+      Alert.alert('Appareil photo', "Autorise l'accès à l'appareil photo pour prendre une photo.");
+      return;
+    }
+    const res = await ImagePicker.launchCameraAsync({ quality: 1 });
+    if (res.canceled) return;
+    const a = res.assets[0];
+    await insertInlineImage({ uri: a.uri, width: a.width });
+  };
+
+  const pickImageInline = async () => {
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) {
+      Alert.alert('Photos', "Autorise l'accès à tes photos pour importer une image.");
+      return;
+    }
+    const res = await ImagePicker.launchImageLibraryAsync({ quality: 1 });
+    if (res.canceled) return;
+    const a = res.assets[0];
+    await insertInlineImage({ uri: a.uri, width: a.width });
+  };
+
+  const attachMenuRich = () => {
+    Alert.alert('Ajouter à la leçon', undefined, [
+      { text: 'Prendre une photo', onPress: takePhotoInline },
+      { text: 'Importer une image', onPress: pickImageInline },
       { text: 'Importer un PDF', onPress: pickPdf },
       { text: 'Annuler', style: 'cancel' },
     ]);
@@ -454,8 +512,8 @@ export default function LeconScreen() {
               </>
             ) : null}
           </View>
-          {RICH_EDITOR && !loading ? (
-            <Pressable onPress={attachMenu} hitSlop={10} accessibilityLabel="Ajouter un média">
+          {RICH_EDITOR && !loading && tab === 'notes' ? (
+            <Pressable onPress={attachMenuRich} hitSlop={10} accessibilityLabel="Ajouter un média">
               <Ionicons name="attach" size={24} color={Palette.text} />
             </Pressable>
           ) : null}
@@ -607,6 +665,7 @@ export default function LeconScreen() {
             <View style={[styles.titleRule, { backgroundColor: color }]} />
           </View>
           <LessonRichEditor
+            ref={richRef}
             lessonId={lessonId}
             initialContent={content}
             initialBlocks={blocks}

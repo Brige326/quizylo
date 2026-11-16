@@ -94,8 +94,11 @@ Conversion `blocks[] → document TipTap` :
   barre d'outils TenTap. Reste : polices custom, insertion de médias dans le flux,
   undo/recherche avancés. Garde-fou : drapeau `RICH_EDITOR` (retour instantané à
   l'ancien éditeur), `blocks` jamais détruit.
-- **Phase 3 — Images robustes** : import + conversion de formats, manipulation, plein
-  écran, images dans le chat.
+- **Phase 3 — Images robustes** (en cours) : ✅ insertion d'images DANS le flux du
+  texte (redimension + data URI embarqué, privé par défaut, aucune URL qui expire).
+  Reste : conversion de formats exotiques (HEIC/AVIF/SVG), plein écran/zoom dans
+  l'éditeur, bascule vers des nœuds `path` + URL signées si le poids des data URI
+  devient un souci.
 - **Phase 4 — Tableaux**.
 - **Phase 5 — Sciences** : maths (KaTeX/MathLive), chimie, graphiques.
 - **Phase 6 — Pièces jointes & dessin** (PDF/DOCX/CSV, Skia).
@@ -136,3 +139,11 @@ début de chaque séance**, pas d'avance.
   `Lesson.content` ajoutés à la couche données ; bouton d'ajout de média conservé
   dans l'en-tête. `tsc` = 0 ; **export web complet réussi** (intégration sans casse).
   Rendu natif iOS à voir à l'ouverture sur appareil.
+- **S6 — Images dans le flux** : `ImageBridge` (déjà dans TenTapStartKit) +
+  `expo-image-manipulator` (redimension à 1400px, JPEG qualité 0.6, data URI).
+  `LessonRichEditor` expose `insertImage()` ; l'écran câble appareil photo /
+  galerie → image insérée dans le texte. Choix **privé par défaut** (data URI
+  dans le document, même RLS), pas d'URL signée qui expire. Auto-test éditeur :
+  insertion → nœud image dans le JSON + rendu DOM + data URI préservé. `tsc` = 0,
+  export web OK. Limite assumée : poids des data URI (à surveiller ; bascule
+  possible vers nœuds `path` plus tard).

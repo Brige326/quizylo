@@ -1,13 +1,19 @@
 // Éditeur de leçon riche, basé sur TenTap (TipTap/ProseMirror dans une WebView).
 // Charge le document `content` ; si absent, le construit depuis les anciens blocs
 // texte (migration sans perte, `blocks` n'est jamais détruit). Autosave débouncé.
+// Expose `insertImage(src)` au parent pour insérer une image dans le flux du texte.
 
 import { RichText, Toolbar, useEditorBridge } from '@10play/tentap-editor';
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef } from 'react';
 import { KeyboardAvoidingView, Platform, StyleSheet, View } from 'react-native';
 
 import { saveLessonContent, type LessonBlock } from '@/lib/courses';
 import { blocksToDoc, isEmptyDoc, type TipTapDoc } from '@/lib/lessonContent';
+
+export type LessonRichEditorHandle = {
+  /** Insère une image (data URI ou URL) à la position du curseur. */
+  insertImage: (src: string) => void;
+};
 
 type Props = {
   lessonId: string;
@@ -19,13 +25,10 @@ type Props = {
   onSaved?: () => void;
 };
 
-export function LessonRichEditor({
-  lessonId,
-  initialContent,
-  initialBlocks,
-  onSaving,
-  onSaved,
-}: Props) {
+export const LessonRichEditor = forwardRef<LessonRichEditorHandle, Props>(function LessonRichEditor(
+  { lessonId, initialContent, initialBlocks, onSaving, onSaved },
+  ref,
+) {
   // Document de départ, calculé une seule fois.
   const { initialDoc, migrated } = useMemo(() => {
     const existing = initialContent as TipTapDoc | null;
@@ -69,6 +72,18 @@ export function LessonRichEditor({
   const editorRef = useRef(editor);
   editorRef.current = editor;
 
+  // Insertion d'image exposée au parent.
+  useImperativeHandle(
+    ref,
+    () => ({
+      insertImage: (src: string) => {
+        editor.setImage(src);
+        scheduleSave();
+      },
+    }),
+    [editor, scheduleSave],
+  );
+
   // Migration : si on a construit le document depuis les blocs, on l'enregistre une fois.
   useEffect(() => {
     if (migrated && !isEmptyDoc(initialDoc)) {
@@ -101,7 +116,7 @@ export function LessonRichEditor({
       </KeyboardAvoidingView>
     </View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
