@@ -765,20 +765,28 @@ export default function PlanningScreen() {
         />
       )}
 
-      {/* Modale création / modification */}
-      <Modal visible={formOpen} transparent animationType="fade" onRequestClose={closeForm}>
-        <Pressable style={styles.backdrop} onPress={closeForm}>
-          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-            <Pressable style={styles.sheet} onPress={() => {}}>
-              <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-                <View style={styles.sheetHead}>
-                  <Text variant="heading">{editing ? "Modifier l'activité" : 'Nouvelle activité'}</Text>
-                  {editing ? (
-                    <Tappable onPress={onDelete} hitSlop={10} accessibilityLabel="Supprimer">
-                      <Ionicons name="trash-outline" size={22} color={Palette.danger} />
-                    </Tappable>
-                  ) : null}
-                </View>
+      {/* Page : création / modification d'un événement */}
+      <Modal visible={formOpen} animationType="slide" onRequestClose={closeForm}>
+        <View style={styles.page}>
+          <View style={[styles.pageHeader, { paddingTop: insets.top + Spacing.xs }]}>
+            <Tappable onPress={closeForm} hitSlop={12} scaleTo={0.9} accessibilityLabel="Fermer">
+              <Ionicons name="close" size={26} color={Palette.text} />
+            </Tappable>
+            <Text variant="heading">{editing ? "Modifier l'activité" : 'Nouvel événement'}</Text>
+            {editing ? (
+              <Tappable onPress={onDelete} hitSlop={10} accessibilityLabel="Supprimer">
+                <Ionicons name="trash-outline" size={22} color={Palette.danger} />
+              </Tappable>
+            ) : (
+              <View style={{ width: 26 }} />
+            )}
+          </View>
+          <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+            <ScrollView
+              style={{ flex: 1 }}
+              contentContainerStyle={styles.pageBody}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}>
 
                 <TextInput
                   style={styles.input}
@@ -951,23 +959,17 @@ export default function PlanningScreen() {
                   textAlignVertical="top"
                 />
 
-                <View style={styles.actions}>
-                  <View style={{ flex: 1 }}>
-                    <Button label="Annuler" variant="ghost" onPress={closeForm} />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Button
-                      label={editing ? 'Enregistrer' : 'Créer'}
-                      onPress={save}
-                      loading={saving}
-                      disabled={!title.trim() || saving}
-                    />
-                  </View>
-                </View>
-              </ScrollView>
-            </Pressable>
+            </ScrollView>
+            <View style={[styles.pageFooter, { paddingBottom: insets.bottom + Spacing.md }]}>
+              <Button
+                label={editing ? 'Enregistrer' : 'Créer'}
+                onPress={save}
+                loading={saving}
+                disabled={!title.trim() || saving}
+              />
+            </View>
           </KeyboardAvoidingView>
-        </Pressable>
+        </View>
       </Modal>
 
       {/* Feuille : Événement ou Tâche */}
@@ -993,20 +995,28 @@ export default function PlanningScreen() {
         </Pressable>
       </Modal>
 
-      {/* Modale : création / modification d'une tâche */}
-      <Modal visible={taskOpen} transparent animationType="fade" onRequestClose={closeTask}>
-        <Pressable style={styles.backdrop} onPress={closeTask}>
-          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-            <Pressable style={styles.sheet} onPress={() => {}}>
-              <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-                <View style={styles.sheetHead}>
-                  <Text variant="heading">{taskEditing ? 'Modifier la tâche' : 'Nouvelle tâche'}</Text>
-                  {taskEditing ? (
-                    <Tappable onPress={onDeleteTask} hitSlop={10} accessibilityLabel="Supprimer">
-                      <Ionicons name="trash-outline" size={22} color={Palette.danger} />
-                    </Tappable>
-                  ) : null}
-                </View>
+      {/* Page : création / modification d'une tâche */}
+      <Modal visible={taskOpen} animationType="slide" onRequestClose={closeTask}>
+        <View style={styles.page}>
+          <View style={[styles.pageHeader, { paddingTop: insets.top + Spacing.xs }]}>
+            <Tappable onPress={closeTask} hitSlop={12} scaleTo={0.9} accessibilityLabel="Fermer">
+              <Ionicons name="close" size={26} color={Palette.text} />
+            </Tappable>
+            <Text variant="heading">{taskEditing ? 'Modifier la tâche' : 'Nouvelle tâche'}</Text>
+            {taskEditing ? (
+              <Tappable onPress={onDeleteTask} hitSlop={10} accessibilityLabel="Supprimer">
+                <Ionicons name="trash-outline" size={22} color={Palette.danger} />
+              </Tappable>
+            ) : (
+              <View style={{ width: 26 }} />
+            )}
+          </View>
+          <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+            <ScrollView
+              style={{ flex: 1 }}
+              contentContainerStyle={styles.pageBody}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}>
 
                 <TextInput
                   style={styles.input}
@@ -1075,23 +1085,17 @@ export default function PlanningScreen() {
                   textAlignVertical="top"
                 />
 
-                <View style={styles.actions}>
-                  <View style={{ flex: 1 }}>
-                    <Button label="Annuler" variant="ghost" onPress={closeTask} />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Button
-                      label={taskEditing ? 'Enregistrer' : 'Créer'}
-                      onPress={saveTask}
-                      loading={taskSaving}
-                      disabled={!taskTitle.trim() || taskSaving}
-                    />
-                  </View>
-                </View>
-              </ScrollView>
-            </Pressable>
+            </ScrollView>
+            <View style={[styles.pageFooter, { paddingBottom: insets.bottom + Spacing.md }]}>
+              <Button
+                label={taskEditing ? 'Enregistrer' : 'Créer'}
+                onPress={saveTask}
+                loading={taskSaving}
+                disabled={!taskTitle.trim() || taskSaving}
+              />
+            </View>
           </KeyboardAvoidingView>
-        </Pressable>
+        </View>
       </Modal>
 
       {/* Feuille : choix du rappel */}
@@ -1668,6 +1672,25 @@ const styles = StyleSheet.create({
   cellToday: { backgroundColor: Palette.primary },
   cellDot: { width: 5, height: 5, borderRadius: 2.5, backgroundColor: Palette.primary },
   cellDotPlaceholder: { width: 5, height: 5 },
+  // Page plein écran (formulaires)
+  page: { flex: 1, backgroundColor: Palette.background },
+  pageHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: Spacing.lg,
+    paddingBottom: Spacing.sm,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: Palette.border,
+  },
+  pageBody: { paddingHorizontal: Spacing.lg, paddingTop: Spacing.sm, paddingBottom: Spacing.xl },
+  pageFooter: {
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.md,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: Palette.border,
+    backgroundColor: Palette.background,
+  },
   // Modale
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center' },
   sheet: {
