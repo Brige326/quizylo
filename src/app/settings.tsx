@@ -33,9 +33,6 @@ export default function SettingsScreen() {
   const soon = (label: string) =>
     Alert.alert(label, 'Cette section arrive dans une prochaine étape — on la construit juste après.');
 
-  const about = () =>
-    Alert.alert('À propos de Quizylo', 'Quizylo — ton assistant de révision.\nVersion 1.0.0');
-
   const onSignIn = () => {
     exitGuest();
     router.replace('/(auth)/login');
@@ -141,7 +138,7 @@ export default function SettingsScreen() {
           <Row
             icon="notifications-outline"
             label={t('settings.notifications')}
-            onPress={() => soon(t('settings.notifications'))}
+            onPress={() => router.push('/notifications')}
           />
         </Section>
 
@@ -149,14 +146,18 @@ export default function SettingsScreen() {
           <Row
             icon="shield-checkmark-outline"
             label={t('settings.dataProtection')}
-            onPress={() => soon(t('settings.dataProtection'))}
+            onPress={() => router.push('/privacy')}
           />
           <Row
             icon="help-buoy-outline"
             label={t('settings.support')}
-            onPress={() => soon(t('settings.support'))}
+            onPress={() => router.push('/support')}
           />
-          <Row icon="information-circle-outline" label={t('settings.about')} onPress={about} />
+          <Row
+            icon="information-circle-outline"
+            label={t('settings.about')}
+            onPress={() => router.push('/about')}
+          />
         </Section>
 
         {!isGuest ? (

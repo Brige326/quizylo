@@ -53,6 +53,10 @@ function RootNavigator() {
       <Stack.Screen name="abonnement" options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="ai-memory" options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="language" options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="notifications" options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="privacy" options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="support" options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="about" options={{ animation: 'slide_from_right' }} />
     </Stack>
   );
 }
