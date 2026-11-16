@@ -145,6 +145,8 @@ export type LessonBlock = {
   type: LessonBlockType;
   /** Blocs texte (titre / sous-titre / texte). */
   text?: string;
+  /** Couleur du texte (blocs titre / sous-titre / texte). Absent = couleur par défaut. */
+  color?: string;
   /** Blocs médias (image / pdf) : chemin Storage privé. */
   path?: string;
   /** Nom d'origine du fichier (surtout pour les PDF). */
@@ -154,6 +156,18 @@ export type LessonBlock = {
 
 export const TEXT_BLOCK_TYPES: LessonBlockType[] = ['heading', 'subheading', 'text'];
 export const isMediaBlock = (t: LessonBlockType) => t === 'image' || t === 'pdf';
+
+/** Couleurs proposées pour les titres / sous-titres / texte d'une leçon. */
+export const LESSON_TEXT_COLORS = [
+  '#FFFFFF',
+  '#22E07B',
+  '#5B8CFF',
+  '#FF4D8D',
+  '#A855F7',
+  '#F5B301',
+  '#2DD4BF',
+  '#FF8A3D',
+];
 
 export type Lesson = {
   id: string;

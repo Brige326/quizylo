@@ -27,6 +27,7 @@ import { useAuth } from '@/contexts/auth';
 import {
   getLesson,
   isMediaBlock,
+  LESSON_TEXT_COLORS,
   removeLessonAsset,
   renameLesson,
   saveLessonBlocks,
@@ -59,6 +60,7 @@ export default function LeconScreen() {
   const [urls, setUrls] = useState<Record<string, string>>({});
   const [viewer, setViewer] = useState<string | null>(null);
   const [reordering, setReordering] = useState(false);
+  const [colorPicker, setColorPicker] = useState<LessonBlock | null>(null);
 
   // Refs pour l'autosave (évite les closures périmées).
   const blocksRef = useRef<LessonBlock[]>([]);
@@ -232,6 +234,9 @@ export default function LeconScreen() {
   const changeType = (id: string, type: LessonBlockType) =>
     setBlocks((prev) => prev.map((b) => (b.id === id ? { ...b, type } : b)));
 
+  const changeColor = (id: string, color?: string) =>
+    setBlocks((prev) => prev.map((b) => (b.id === id ? { ...b, color } : b)));
+
   const move = (id: string, dir: -1 | 1) =>
     setBlocks((prev) => {
       const i = prev.findIndex((b) => b.id === id);
@@ -264,6 +269,7 @@ export default function LeconScreen() {
         onPress: () => changeType(b.id, 'subheading'),
       },
       { text: b.type === 'text' ? '• Texte' : 'Texte', onPress: () => changeType(b.id, 'text') },
+      { text: 'Couleur…', onPress: () => setColorPicker(b) },
       { text: 'Monter', onPress: () => move(b.id, -1) },
       { text: 'Descendre', onPress: () => move(b.id, 1) },
       { text: 'Supprimer', style: 'destructive', onPress: () => removeBlock(b) },
@@ -359,7 +365,7 @@ export default function LeconScreen() {
         haptic={false}
         scaleTo={1}>
         <TextInput
-          style={[styles.block, inputStyleFor(b.type)]}
+          style={[styles.block, inputStyleFor(b.type), b.color ? { color: b.color } : null]}
           value={b.text ?? ''}
           onChangeText={(t) => updateBlock(b.id, t)}
           onFocus={() => setFocusId(b.id)}
@@ -533,6 +539,39 @@ export default function LeconScreen() {
           {viewer ? <Image source={{ uri: viewer }} style={styles.viewerImage} resizeMode="contain" /> : null}
         </Pressable>
       </Modal>
+
+      {/* Feuille : couleur d'un bloc */}
+      <Modal
+        visible={!!colorPicker}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setColorPicker(null)}>
+        <Pressable style={styles.sheetBackdrop} onPress={() => setColorPicker(null)}>
+          <Pressable style={[styles.sheet, { paddingBottom: insets.bottom + Spacing.lg }]}>
+            <Text variant="heading" style={{ marginBottom: Spacing.md }}>
+              Couleur du bloc
+            </Text>
+            <View style={styles.colorRow}>
+              {LESSON_TEXT_COLORS.map((c) => {
+                const active = (colorPicker?.color ?? '#FFFFFF') === c;
+                return (
+                  <Pressable
+                    key={c}
+                    onPress={() => {
+                      if (colorPicker) changeColor(colorPicker.id, c === '#FFFFFF' ? undefined : c);
+                      setColorPicker(null);
+                    }}
+                    accessibilityLabel={`Couleur ${c}`}>
+                    <View style={[styles.colorDot, { backgroundColor: c }, active && styles.colorDotActive]}>
+                      {active ? <Ionicons name="checkmark" size={16} color="#06130C" /> : null}
+                    </View>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </Screen>
   );
 }
@@ -563,10 +602,23 @@ const styles = StyleSheet.create({
   title: { color: Palette.text, ...Type.display, padding: 0 },
   titleRule: { width: 44, height: 4, borderRadius: 2, marginTop: Spacing.sm, marginBottom: Spacing.md },
   hint: { lineHeight: 22, marginTop: Spacing.sm },
-  block: { color: Palette.text, paddingVertical: Spacing.xs, paddingHorizontal: 0 },
-  bHeading: { ...Type.title },
-  bSubheading: { ...Type.heading },
-  bText: { ...Type.body, lineHeight: 23 },
+  block: { color: Palette.text, paddingHorizontal: 0 },
+  bHeading: {
+    fontSize: 23,
+    fontWeight: '800',
+    lineHeight: 29,
+    letterSpacing: -0.3,
+    marginTop: Spacing.md,
+    paddingVertical: 2,
+  },
+  bSubheading: {
+    fontSize: 18,
+    fontWeight: '700',
+    lineHeight: 24,
+    marginTop: Spacing.sm,
+    paddingVertical: 2,
+  },
+  bText: { fontSize: 15, fontWeight: '400', lineHeight: 24, paddingVertical: Spacing.xs },
   imageWrap: {
     marginVertical: Spacing.sm,
     borderRadius: Radius.lg,
@@ -636,4 +688,23 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   viewerImage: { width: '100%', height: '100%' },
+  sheetBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  sheet: {
+    backgroundColor: Palette.surfaceElevated,
+    borderTopLeftRadius: Radius.xl,
+    borderTopRightRadius: Radius.xl,
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.lg,
+  },
+  colorRow: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.md },
+  colorDot: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  colorDotActive: { borderColor: Palette.text },
 });
