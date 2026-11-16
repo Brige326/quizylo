@@ -1,0 +1,120 @@
+# Quizylo — Plan de l'éditeur de leçons
+
+Document de suivi (fil conducteur entre les séances). Mis à jour à chaque étape.
+
+## Vision
+
+Transformer l'éditeur de leçons en un **traitement de texte éducatif et scientifique**
+professionnel : mise en forme riche, tableaux, mathématiques, notation scientifique,
+images robustes, pièces jointes, et intégration de l'IA de révision — tout en restant
+simple à utiliser pour un collégien/lycéen, et cohérent entre mobile et web.
+
+## Décision n°1 — Moteur d'édition
+
+**Recommandation : `@10play/tentap-editor` (TenTap)** = TipTap/ProseMirror rendu dans
+une WebView.
+
+Raisons : seule option qui couvre texte riche en ligne + tableaux + maths + nodes
+custom *et* unifie le rendu mobile/web. Tourne dans le setup actuel **sans nouveau
+build natif** (réutilise `react-native-webview`, déjà présent et fonctionnel via le
+lecteur PDF). Le HTML de l'éditeur est **bundlé** dans le paquet → aucun serveur requis.
+
+Alternatives écartées : blocs natifs (plafond : pas de mise en forme en ligne, pas de
+tableaux/maths) ; `react-native-pell-rich-editor` (ancien, cul-de-sac) ; Lexical-RN
+(immature).
+
+> Statut : **en attente de validation par test appareil** (prototype Séance 2).
+
+## Architecture cible
+
+- **Écran leçon** = coquille native (en-tête, onglets, sauvegarde, actions) + **éditeur
+  TenTap** au centre.
+- **Barre d'outils contextuelle** au-dessus du clavier (couplée à
+  `react-native-keyboard-controller`, déjà installé).
+- **Insertions riches** (image, tableau, équation, graphique, dessin, pièce jointe) =
+  nodes TipTap, chacune avec son éditeur/visionneuse.
+- **Médias** : upload Storage privé (bucket `documents`), référencés par chemin +
+  URL signée dans le document et dans `lesson_attachments`.
+- **Lecture (révision)** et **édition** partagent le même document `content`.
+
+## Modèle de données (appliqué — migration `add_lesson_content_and_attachments`)
+
+`public.lessons` (existant) + ajout :
+- `content jsonb` **nullable** — document riche TipTap/ProseMirror. Inerte tant que
+  l'éditeur n'est pas livré ; `blocks` reste la source actuelle.
+
+Nouvelle table `public.lesson_attachments` :
+
+| colonne | type | note |
+|---|---|---|
+| id | uuid PK | |
+| lesson_id | uuid | FK → lessons, `on delete cascade` |
+| user_id | uuid | RLS |
+| kind | text | `image \| pdf \| document \| audio \| other` |
+| storage_path | text | chemin dans le bucket privé |
+| mime | text | |
+| name | text | |
+| size_bytes | bigint | |
+| meta | jsonb | défaut `{}` |
+| position | integer | ordre d'affichage |
+| created_at | timestamptz | |
+
+RLS per-utilisateur (`auth.uid() = user_id`) sur select/insert/update/delete,
+identique au motif de `lessons`.
+
+## Plan de migration des données (blocs → content)
+
+**Sans perte, réversible.** À la première ouverture d'une leçon :
+- si `content` est null **et** `blocks` non vide → construire `content` à partir de
+  `blocks`, l'enregistrer, **laisser `blocks` intact** ;
+- sinon → utiliser `content`.
+
+Conversion `blocks[] → document TipTap` :
+- `heading` → `heading` niveau 1 ; `subheading` → `heading` niveau 2 ;
+- `text` → `paragraph` (sauts de ligne → paragraphes / `hardBreak`) ;
+- `image` → node image (chemin Storage + URL signée) ;
+- `pdf` → node pièce jointe + ligne dans `lesson_attachments` ;
+- `color` / `font` par bloc → marques best-effort (`textStyle` couleur, police).
+
+`blocks` n'est jamais détruit : rollback possible tant que la bascule n'est pas validée.
+
+## Phasage
+
+- **Phase 0 — Décision & socle** : S1 audit ✅ · S2 prototype TenTap ✅ (test appareil en
+  attente) · S3 architecture + modèle de données ✅ (migration appliquée).
+- **Phase 1 — Clavier & socle d'écriture** : réglage clavier (keyboard-controller),
+  curseur/sélection, tests documents longs.
+- **Phase 2 — Bascule moteur** : intégration TenTap dans le vrai écran + migration
+  blocs→content, mise en forme de base, polices, menus d'insertion, undo/recherche.
+- **Phase 3 — Images robustes** : import + conversion de formats, manipulation, plein
+  écran, images dans le chat.
+- **Phase 4 — Tableaux**.
+- **Phase 5 — Sciences** : maths (KaTeX/MathLive), chimie, graphiques.
+- **Phase 6 — Pièces jointes & dessin** (PDF/DOCX/CSV, Skia).
+- **Phase 7 — Fiabilité** : autosave/brouillon local, synchro/conflits, perfs/sécurité.
+- **Phase 8 — IA** : exploitation de `content` (fiches/quiz/flashcards).
+- **Phase 9 — QA** : iOS/Android/web, perfs, accessibilité.
+
+Le détail (objectif, fichiers, dépendances, risques, tests, critères) est produit **au
+début de chaque séance**, pas d'avance.
+
+## Décisions en attente de l'utilisateur
+
+1. **Moteur** : valider TenTap après test du prototype (Séance 2).
+2. **Development build** : OK pour passer d'Expo Go à un build de dev si une lib future
+   l'exige (Skia...) ? (TenTap, lui, n'en a pas besoin.)
+3. **Cible web** : bientôt (influence les choix) ou plus tard ?
+4. **Périmètre v1** : socle (clavier + écriture riche + images + autosave + IA) d'abord,
+   avancé (tableaux/maths/graphiques) ensuite ?
+5. **Clé IA** : fournie en Phase 8 (posée en secret Supabase, jamais affichée).
+
+## Journal des séances
+
+- **S1 — Audit** : diagnostic de l'éditeur par blocs (plafond fonctionnel), cause du
+  problème clavier (keyboard-controller inexploité), reco moteur.
+- **S2 — Prototype** : `@10play/tentap-editor` installé ; écran de test jetable
+  `src/app/lab/editor.tsx` + bandeau d'accès temporaire ; compat React 19/RN 0.88/webview
+  14 confirmée ; `tsc` = 0 ; poussé. Test appareil en attente.
+- **S3 — Modèle de données** : migration `add_lesson_content_and_attachments` appliquée
+  (colonne `content`, table `lesson_attachments` + RLS). Plan de migration blocs→content
+  défini.
