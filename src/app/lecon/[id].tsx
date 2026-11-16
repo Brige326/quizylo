@@ -345,11 +345,34 @@ export default function LeconScreen() {
     );
   };
 
+  const insertChemPrompt = () => {
+    if (Platform.OS !== 'ios') {
+      Alert.alert('Chimie', 'La saisie sera disponible sur Android prochainement.');
+      return;
+    }
+    Alert.prompt(
+      'Formule chimique',
+      'Écris la réaction/molécule (ex. 2H2 + O2 -> 2H2O, H2SO4).',
+      [
+        { text: 'Annuler', style: 'cancel' },
+        {
+          text: 'Insérer',
+          onPress: (txt?: string) => {
+            const eq = (txt ?? '').trim();
+            if (eq) richRef.current?.insertMath(`\\ce{${eq}}`, true);
+          },
+        },
+      ],
+      'plain-text',
+    );
+  };
+
   const attachMenuRich = () => {
     Alert.alert('Ajouter à la leçon', undefined, [
       { text: 'Insérer un tableau', onPress: () => richRef.current?.insertTable() },
       { text: 'Modifier le tableau…', onPress: tableMenu },
       { text: 'Insérer une formule (maths)', onPress: insertMathPrompt },
+      { text: 'Insérer une formule chimique', onPress: insertChemPrompt },
       { text: 'Prendre une photo', onPress: takePhotoInline },
       { text: 'Importer une image', onPress: pickImageInline },
       { text: 'Importer un PDF', onPress: pickPdf },

@@ -215,4 +215,17 @@ au bundle ; **KaTeX inliné** (CSS + 20 polices woff2 en base64) dans le build p
 Auto-test navigateur : formules inline + bloc **rendues par KaTeX** avec les bonnes
 polices (exposants, intégrale, fraction — capture), 0 erreur. `tsc` = 0, export web OK.
 Bundle `editorHtml` ~1,5 Mo. Reste : saisie de formule sur Android (modale custom),
-test appareil ; plus tard chimie/graphiques/polices/dessin (mêmes mécaniques).
+test appareil.
+
+**S15 — Chimie (mhchem)** : extension `katex/contrib/mhchem` ajoutée au bundle →
+`\ce{...}` rendu par le même moteur KaTeX. Entrée « Insérer une formule chimique »
+(enrobe la saisie dans `\ce{}`). Auto-test navigateur : `2H2 + O2 -> 2H2O` et `CO2`
+rendus (indices + flèche de réaction, capture), 0 erreur. `tsc` = 0, export web OK.
+
+### Limite de test (honnête)
+
+Le rendu natif dans la WebView iOS (Expo Go sur iPhone) n'est pas testable depuis
+l'environnement de dev : pas d'appareil ni de simulateur iOS, et le moteur WebKit de
+Playwright (équivalent iOS) ne peut pas être téléchargé ici (proxy). Tous les tests
+sont donc faits dans Chromium (mêmes standards web) + `tsc` + export web + captures.
+Le seul écart résiduel = le rendu réel sur l'iPhone, à constater sur l'appareil.
