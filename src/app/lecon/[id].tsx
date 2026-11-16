@@ -58,6 +58,7 @@ export default function LeconScreen() {
   const [busy, setBusy] = useState(false);
   const [urls, setUrls] = useState<Record<string, string>>({});
   const [viewer, setViewer] = useState<string | null>(null);
+  const [reordering, setReordering] = useState(false);
 
   // Refs pour l'autosave (évite les closures périmées).
   const blocksRef = useRef<LessonBlock[]>([]);
@@ -280,6 +281,27 @@ export default function LeconScreen() {
     }
   };
 
+  const confirmRemove = (b: LessonBlock) =>
+    Alert.alert('Supprimer le bloc', 'Ce bloc sera retiré de la leçon.', [
+      { text: 'Annuler', style: 'cancel' },
+      { text: 'Supprimer', style: 'destructive', onPress: () => removeBlock(b) },
+    ]);
+
+  const iconFor = (b: LessonBlock): any => {
+    if (b.type === 'heading') return 'text';
+    if (b.type === 'subheading') return 'text-outline';
+    if (b.type === 'image') return 'image-outline';
+    if (b.type === 'pdf') return 'document-text-outline';
+    return 'reorder-four-outline';
+  };
+  const previewFor = (b: LessonBlock): string => {
+    if (b.type === 'image') return 'Image';
+    if (b.type === 'pdf') return b.name ?? 'Document PDF';
+    const t = (b.text ?? '').trim();
+    if (t) return t;
+    return b.type === 'heading' ? 'Titre' : b.type === 'subheading' ? 'Sous-titre' : 'Texte';
+  };
+
   const inputStyleFor = (type: LessonBlockType) =>
     type === 'heading' ? styles.bHeading : type === 'subheading' ? styles.bSubheading : styles.bText;
   const placeholderFor = (type: LessonBlockType) =>
@@ -357,21 +379,34 @@ export default function LeconScreen() {
         <Tappable onPress={back} hitSlop={12} scaleTo={0.9} accessibilityLabel="Retour">
           <Ionicons name="chevron-back" size={26} color={Palette.text} />
         </Tappable>
-        <View style={styles.saveBadge}>
-          {saveState === 'saving' ? (
-            <>
-              <ActivityIndicator size="small" color={Palette.textMuted} />
-              <Text variant="small" color={Palette.textMuted}>
-                Enregistrement…
+        <View style={styles.headerRight}>
+          <View style={styles.saveBadge}>
+            {saveState === 'saving' ? (
+              <>
+                <ActivityIndicator size="small" color={Palette.textMuted} />
+                <Text variant="small" color={Palette.textMuted}>
+                  Enregistrement…
+                </Text>
+              </>
+            ) : saveState === 'saved' ? (
+              <>
+                <Ionicons name="checkmark-circle" size={16} color={color} />
+                <Text variant="small" color={Palette.textMuted}>
+                  Enregistré
+                </Text>
+              </>
+            ) : null}
+          </View>
+          {!loading && blocks.length > 1 ? (
+            <Tappable
+              onPress={() => setReordering((r) => !r)}
+              hitSlop={10}
+              scaleTo={0.9}
+              accessibilityLabel="Réorganiser">
+              <Text variant="bodyStrong" color={reordering ? color : Palette.textSecondary}>
+                {reordering ? 'Terminé' : 'Réorganiser'}
               </Text>
-            </>
-          ) : saveState === 'saved' ? (
-            <>
-              <Ionicons name="checkmark-circle" size={16} color={color} />
-              <Text variant="small" color={Palette.textMuted}>
-                Enregistré
-              </Text>
-            </>
+            </Tappable>
           ) : null}
         </View>
       </View>
@@ -380,6 +415,41 @@ export default function LeconScreen() {
         <View style={styles.center}>
           <ActivityIndicator color={color} />
         </View>
+      ) : reordering ? (
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={styles.body}
+          showsVerticalScrollIndicator={false}>
+          <Text variant="small" color={Palette.textMuted} style={{ marginBottom: Spacing.sm }}>
+            Réorganise ou supprime les blocs, puis appuie sur « Terminé ».
+          </Text>
+          {blocks.map((b, index) => (
+            <View key={b.id} style={styles.reorderRow}>
+              <Ionicons name={iconFor(b)} size={18} color={Palette.textSecondary} />
+              <Text variant="body" numberOfLines={1} style={{ flex: 1 }}>
+                {previewFor(b)}
+              </Text>
+              <Pressable
+                hitSlop={8}
+                disabled={index === 0}
+                onPress={() => move(b.id, -1)}
+                style={index === 0 ? styles.ctrlDisabled : undefined}>
+                <Ionicons name="chevron-up" size={22} color={Palette.text} />
+              </Pressable>
+              <Pressable
+                hitSlop={8}
+                disabled={index === blocks.length - 1}
+                onPress={() => move(b.id, 1)}
+                style={index === blocks.length - 1 ? styles.ctrlDisabled : undefined}>
+                <Ionicons name="chevron-down" size={22} color={Palette.text} />
+              </Pressable>
+              <Pressable hitSlop={8} onPress={() => confirmRemove(b)}>
+                <Ionicons name="trash-outline" size={19} color={Palette.textMuted} />
+              </Pressable>
+            </View>
+          ))}
+          <View style={{ height: 24 }} />
+        </ScrollView>
       ) : (
         <KeyboardAvoidingView
           style={{ flex: 1 }}
@@ -475,7 +545,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.lg,
     paddingBottom: Spacing.sm,
   },
+  headerRight: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
   saveBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 18 },
+  reorderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+    backgroundColor: Palette.surface,
+    borderRadius: Radius.md,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.md,
+    marginBottom: Spacing.sm,
+  },
+  ctrlDisabled: { opacity: 0.3 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: Spacing.xl },
   body: { paddingHorizontal: Spacing.lg, paddingTop: Spacing.sm, paddingBottom: Spacing.xl },
   title: { color: Palette.text, ...Type.display, padding: 0 },
