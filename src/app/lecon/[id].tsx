@@ -20,6 +20,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
 
+import { LessonRichEditor } from '@/components/LessonRichEditor';
 import { Screen } from '@/components/ui/Screen';
 import { Text } from '@/components/ui/Text';
 import { Palette, Radius, Spacing, Type } from '@/constants/theme';
@@ -57,6 +58,10 @@ const newId = () => `${Date.now().toString(36)}-${(_seq++).toString(36)}`;
 
 type SaveState = 'idle' | 'saving' | 'saved';
 
+// Phase 2 : nouvel éditeur riche (TenTap/TipTap). Mis à false pour revenir
+// instantanément à l'ancien éditeur par blocs (les données `blocks` sont préservées).
+const RICH_EDITOR = true;
+
 export default function LeconScreen() {
   const { session } = useAuth();
   const router = useRouter();
@@ -71,6 +76,7 @@ export default function LeconScreen() {
   const [loading, setLoading] = useState(false);
   const [title, setTitle] = useState(params.name ?? '');
   const [blocks, setBlocks] = useState<LessonBlock[]>([]);
+  const [content, setContent] = useState<Record<string, unknown> | null>(null);
   const [saveState, setSaveState] = useState<SaveState>('saved');
   const [focusId, setFocusId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -104,6 +110,7 @@ export default function LeconScreen() {
           setTitle(l.title);
           savedTitleRef.current = l.title;
           setBlocks(l.blocks ?? []);
+          setContent(l.content ?? null);
         }
       } catch {
         // On n'invente rien : en cas d'échec, l'écran reste éditable et réessaiera à la sauvegarde.
@@ -447,7 +454,12 @@ export default function LeconScreen() {
               </>
             ) : null}
           </View>
-          {!loading && tab === 'notes' && blocks.length > 1 ? (
+          {RICH_EDITOR && !loading ? (
+            <Pressable onPress={attachMenu} hitSlop={10} accessibilityLabel="Ajouter un média">
+              <Ionicons name="attach" size={24} color={Palette.text} />
+            </Pressable>
+          ) : null}
+          {!RICH_EDITOR && !loading && tab === 'notes' && blocks.length > 1 ? (
             <Pressable
               onPress={() => setReordering((r) => !r)}
               hitSlop={10}
@@ -581,6 +593,27 @@ export default function LeconScreen() {
           ))}
           <View style={{ height: 24 }} />
         </ScrollView>
+      ) : RICH_EDITOR ? (
+        <View style={{ flex: 1 }}>
+          <View style={styles.richHeader}>
+            <TextInput
+              style={styles.title}
+              value={title}
+              onChangeText={setTitle}
+              placeholder="Titre de la leçon"
+              placeholderTextColor={Palette.textMuted}
+              multiline
+            />
+            <View style={[styles.titleRule, { backgroundColor: color }]} />
+          </View>
+          <LessonRichEditor
+            lessonId={lessonId}
+            initialContent={content}
+            initialBlocks={blocks}
+            onSaving={() => setSaveState('saving')}
+            onSaved={() => setSaveState('saved')}
+          />
+        </View>
       ) : (
         <ScrollView
           style={{ flex: 1 }}
@@ -610,7 +643,7 @@ export default function LeconScreen() {
       )}
 
       {/* Barre contextuelle : mise en forme du bloc actif, sinon insertion */}
-      {!loading && tab === 'notes' && !reordering ? (
+      {!RICH_EDITOR && !loading && tab === 'notes' && !reordering ? (
         focusedBlock ? (
             <View style={[styles.toolbar, { paddingBottom: insets.bottom + Spacing.sm }]}>
               <Pressable
@@ -828,6 +861,7 @@ export default function LeconScreen() {
 }
 
 const styles = StyleSheet.create({
+  richHeader: { paddingHorizontal: Spacing.lg, paddingTop: Spacing.md },
   header: {
     flexDirection: 'row',
     alignItems: 'center',

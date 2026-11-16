@@ -89,8 +89,11 @@ Conversion `blocks[] → document TipTap` :
   attente) · S3 architecture + modèle de données ✅ (migration appliquée).
 - **Phase 1 — Clavier & socle d'écriture** : réglage clavier (keyboard-controller),
   curseur/sélection, tests documents longs.
-- **Phase 2 — Bascule moteur** : intégration TenTap dans le vrai écran + migration
-  blocs→content, mise en forme de base, polices, menus d'insertion, undo/recherche.
+- **Phase 2 — Bascule moteur** ✅ (socle) : TenTap intégré dans `lecon/[id].tsx`
+  (onglet Notes), migration blocs→content à l'ouverture, autosave du document,
+  barre d'outils TenTap. Reste : polices custom, insertion de médias dans le flux,
+  undo/recherche avancés. Garde-fou : drapeau `RICH_EDITOR` (retour instantané à
+  l'ancien éditeur), `blocks` jamais détruit.
 - **Phase 3 — Images robustes** : import + conversion de formats, manipulation, plein
   écran, images dans le chat.
 - **Phase 4 — Tableaux**.
@@ -127,3 +130,9 @@ début de chaque séance**, pas d'avance.
   (rendu + formatage OK). `src/lib/lessonContent.ts` : convertisseur pur
   `blocksToDoc()` (titres, texte multi-lignes→hardBreak, couleur→mark, image, pdf→
   attachment, police, cas vides). **13 tests unitaires au vert**, `tsc` = 0.
+- **S5 — Intégration Phase 2** : `src/components/LessonRichEditor.tsx` (TenTap +
+  autosave `content` + migration blocs→content au montage, `blocks` préservé) ;
+  branché dans `lecon/[id].tsx` derrière `RICH_EDITOR` ; `saveLessonContent` +
+  `Lesson.content` ajoutés à la couche données ; bouton d'ajout de média conservé
+  dans l'en-tête. `tsc` = 0 ; **export web complet réussi** (intégration sans casse).
+  Rendu natif iOS à voir à l'ouverture sur appareil.
