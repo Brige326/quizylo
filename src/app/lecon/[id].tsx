@@ -17,7 +17,6 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
-import { KeyboardStickyView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
 
@@ -492,7 +491,6 @@ export default function LeconScreen() {
           </Tappable>
         </View>
 
-      <View style={{ flex: 1 }}>
       {loading ? (
         <View style={styles.center}>
           <ActivityIndicator color={color} />
@@ -620,12 +618,10 @@ export default function LeconScreen() {
             <View style={{ height: 24 }} />
         </ScrollView>
       )}
-      </View>
 
       {/* Barre contextuelle : mise en forme du bloc actif, sinon insertion */}
       {!loading && tab === 'notes' && !reordering ? (
-        <KeyboardStickyView>
-          {focusedBlock ? (
+        focusedBlock ? (
             <View style={[styles.toolbar, { paddingBottom: insets.bottom + Spacing.sm }]}>
               <Tappable
                 style={[styles.fmtBtn, focusedBlock.type === 'heading' && styles.fmtActive]}
@@ -718,8 +714,7 @@ export default function LeconScreen() {
                 </Text>
               </Tappable>
             </View>
-          )}
-        </KeyboardStickyView>
+          )
       ) : null}
 
       {/* Overlay d'upload */}
