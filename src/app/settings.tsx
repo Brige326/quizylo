@@ -38,6 +38,15 @@ export default function SettingsScreen() {
     router.replace('/(auth)/login');
   };
 
+  const openSelectDelete = () => {
+    const userId = session?.user?.id;
+    if (isGuest || !userId) {
+      soon(t('settings.deleteSelect'));
+      return;
+    }
+    router.push('/select-delete');
+  };
+
   const deleteAllChats = () => {
     const userId = session?.user?.id;
     if (isGuest || !userId) {
@@ -119,6 +128,11 @@ export default function SettingsScreen() {
             icon="sparkles-outline"
             label={t('settings.aiMemory')}
             onPress={() => router.push('/ai-memory')}
+          />
+          <Row
+            icon="checkmark-circle-outline"
+            label={t('settings.deleteSelect')}
+            onPress={openSelectDelete}
           />
           <Row
             icon="trash-outline"

@@ -55,6 +55,7 @@ function RootNavigator() {
       />
       <Stack.Screen name="pro" options={{ animation: 'slide_from_bottom', presentation: 'modal' }} />
       <Stack.Screen name="settings" options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="select-delete" options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="account" options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="abonnement" options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="ai-memory" options={{ animation: 'slide_from_right' }} />
