@@ -7,7 +7,6 @@ import {
   ActivityIndicator,
   Alert,
   Image,
-  KeyboardAvoidingView,
   Linking,
   Modal,
   Platform,
@@ -18,6 +17,7 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
+import { KeyboardStickyView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
 
@@ -470,8 +470,7 @@ export default function LeconScreen() {
       </View>
 
       {/* Bascule Notes / Ressources */}
-      {!loading ? (
-        <View style={styles.tabs}>
+      <View style={styles.tabs}>
           <Tappable
             style={[styles.tab, tab === 'notes' && { backgroundColor: Palette.primarySurface }]}
             onPress={() => setTab('notes')}
@@ -492,8 +491,8 @@ export default function LeconScreen() {
             </Text>
           </Tappable>
         </View>
-      ) : null}
 
+      <View style={{ flex: 1 }}>
       {loading ? (
         <View style={styles.center}>
           <ActivityIndicator color={color} />
@@ -595,15 +594,11 @@ export default function LeconScreen() {
           <View style={{ height: 24 }} />
         </ScrollView>
       ) : (
-        <KeyboardAvoidingView
+        <ScrollView
           style={{ flex: 1 }}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          keyboardVerticalOffset={insets.top + 44}>
-          <ScrollView
-            style={{ flex: 1 }}
-            contentContainerStyle={styles.body}
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}>
+          contentContainerStyle={styles.body}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}>
             <TextInput
               style={styles.title}
               value={title}
@@ -623,9 +618,13 @@ export default function LeconScreen() {
               blocks.map(renderBlock)
             )}
             <View style={{ height: 24 }} />
-          </ScrollView>
+        </ScrollView>
+      )}
+      </View>
 
-          {/* Barre contextuelle : mise en forme du bloc actif, sinon insertion */}
+      {/* Barre contextuelle : mise en forme du bloc actif, sinon insertion */}
+      {!loading && tab === 'notes' && !reordering ? (
+        <KeyboardStickyView>
           {focusedBlock ? (
             <View style={[styles.toolbar, { paddingBottom: insets.bottom + Spacing.sm }]}>
               <Tappable
@@ -720,8 +719,8 @@ export default function LeconScreen() {
               </Tappable>
             </View>
           )}
-        </KeyboardAvoidingView>
-      )}
+        </KeyboardStickyView>
+      ) : null}
 
       {/* Overlay d'upload */}
       {busy ? (
