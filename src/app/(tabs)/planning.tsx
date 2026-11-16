@@ -30,10 +30,16 @@ import {
   CATEGORIES,
   categoryOf,
   createEvent,
+  createTask,
   deleteEvent,
+  deleteTask,
   listEventsBetween,
+  listTasksBetween,
+  setTaskDone,
   updateEvent,
+  updateTask,
   type EventItem,
+  type TaskItem,
 } from '@/lib/planning';
 
 type ViewMode = 'day' | 'week' | 'month';
@@ -62,6 +68,17 @@ function sameDay(a: Date, b: Date): boolean {
 }
 function dateKey(d: Date): string {
   return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+}
+function pad(n: number): string {
+  return n < 10 ? `0${n}` : `${n}`;
+}
+// Clé 'YYYY-MM-DD' en heure locale (format des échéances de tâches).
+function ymd(d: Date): string {
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+function parseYmd(s: string): Date {
+  const [y, m, d] = s.split('-').map(Number);
+  return new Date(y, (m ?? 1) - 1, d ?? 1);
 }
 function combine(date: Date, time: Date): Date {
   const d = new Date(date);
@@ -103,7 +120,21 @@ export default function PlanningScreen() {
   const [view, setView] = useState<ViewMode>('day');
   const [day, setDay] = useState<Date>(() => startOfDay(new Date()));
   const [events, setEvents] = useState<EventItem[]>([]);
+  const [tasks, setTasks] = useState<TaskItem[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Choix Événement / Tâche à l'ajout
+  const [chooserOpen, setChooserOpen] = useState(false);
+
+  // Formulaire de tâche
+  const [taskOpen, setTaskOpen] = useState(false);
+  const [taskEditing, setTaskEditing] = useState<TaskItem | null>(null);
+  const [taskTitle, setTaskTitle] = useState('');
+  const [taskCategory, setTaskCategory] = useState(CATEGORIES[0].key);
+  const [taskDate, setTaskDate] = useState<Date>(() => startOfDay(new Date()));
+  const [taskDesc, setTaskDesc] = useState('');
+  const [taskShowDate, setTaskShowDate] = useState(false);
+  const [taskSaving, setTaskSaving] = useState(false);
 
   // Formulaire (création + modification)
   const [formOpen, setFormOpen] = useState(false);
@@ -138,7 +169,12 @@ export default function PlanningScreen() {
     }
     setLoading(true);
     try {
-      setEvents(await listEventsBetween(userId, range.start.toISOString(), range.end.toISOString()));
+      const [ev, tk] = await Promise.all([
+        listEventsBetween(userId, range.start.toISOString(), range.end.toISOString()),
+        listTasksBetween(userId, ymd(range.start), ymd(range.end)),
+      ]);
+      setEvents(ev);
+      setTasks(tk);
     } catch {
       // rien d'inventé
     } finally {
@@ -160,6 +196,17 @@ export default function PlanningScreen() {
     }
     return m;
   }, [events]);
+
+  // Tâches regroupées par échéance (clé 'YYYY-MM-DD').
+  const tasksByDay = useMemo(() => {
+    const m = new Map<string, TaskItem[]>();
+    for (const t of tasks) {
+      const arr = m.get(t.due_date);
+      if (arr) arr.push(t);
+      else m.set(t.due_date, [t]);
+    }
+    return m;
+  }, [tasks]);
 
   const today = startOfDay(new Date());
   const periodHasToday = useMemo(() => {
@@ -281,6 +328,88 @@ export default function PlanningScreen() {
     ]);
   };
 
+  /* ---------- Tâches ---------- */
+
+  const openAddTask = (forDate?: Date) => {
+    setChooserOpen(false);
+    setTaskEditing(null);
+    setTaskTitle('');
+    setTaskCategory(CATEGORIES[0].key);
+    setTaskDate(startOfDay(forDate ?? day));
+    setTaskDesc('');
+    setTaskShowDate(false);
+    setTaskOpen(true);
+  };
+
+  const openEditTask = (t: TaskItem) => {
+    setTaskEditing(t);
+    setTaskTitle(t.title);
+    setTaskCategory(t.category);
+    setTaskDate(startOfDay(parseYmd(t.due_date)));
+    setTaskDesc(t.description ?? '');
+    setTaskShowDate(false);
+    setTaskOpen(true);
+  };
+
+  const closeTask = () => {
+    if (taskSaving) return;
+    setTaskOpen(false);
+    setTaskShowDate(false);
+  };
+
+  const saveTask = async () => {
+    if (!taskTitle.trim() || !userId) return;
+    setTaskSaving(true);
+    const payload = {
+      title: taskTitle,
+      category: taskCategory,
+      dueDate: ymd(taskDate),
+      description: taskDesc.trim() || null,
+    };
+    try {
+      if (taskEditing) await updateTask(taskEditing.id, payload);
+      else await createTask({ userId, ...payload });
+      setTaskOpen(false);
+      setDay(startOfDay(taskDate));
+      if (sameDay(taskDate, day)) await load();
+    } catch {
+      Alert.alert('Oups', "La tâche n'a pas pu être enregistrée.");
+    } finally {
+      setTaskSaving(false);
+    }
+  };
+
+  const onDeleteTask = () => {
+    const t = taskEditing;
+    if (!t) return;
+    Alert.alert('Supprimer', `« ${t.title} » sera supprimée.`, [
+      { text: 'Annuler', style: 'cancel' },
+      {
+        text: 'Supprimer',
+        style: 'destructive',
+        onPress: async () => {
+          setTaskOpen(false);
+          setTasks((prev) => prev.filter((x) => x.id !== t.id));
+          try {
+            await deleteTask(t.id);
+          } catch {
+            load();
+          }
+        },
+      },
+    ]);
+  };
+
+  const toggleTask = async (t: TaskItem) => {
+    const next = !t.done;
+    setTasks((prev) => prev.map((x) => (x.id === t.id ? { ...x, done: next } : x)));
+    try {
+      await setTaskDone(t.id, next);
+    } catch {
+      load();
+    }
+  };
+
   if (isGuest || !userId) {
     return (
       <Screen>
@@ -310,7 +439,7 @@ export default function PlanningScreen() {
             {periodHasToday && view === 'day' ? "Aujourd'hui" : periodLabel}
           </Text>
         </View>
-        <Tappable style={styles.addBtn} onPress={() => openAdd()} accessibilityLabel="Ajouter une activité">
+        <Tappable style={styles.addBtn} onPress={() => setChooserOpen(true)} accessibilityLabel="Ajouter">
           <Ionicons name="add" size={26} color={Palette.onPrimary} />
         </Tappable>
       </View>
@@ -347,13 +476,30 @@ export default function PlanningScreen() {
           <ActivityIndicator color={Palette.primary} />
         </View>
       ) : view === 'day' ? (
-        <DayView events={byDay.get(dateKey(day)) ?? []} onAdd={() => openAdd()} onPress={openEdit} />
+        <DayView
+          events={byDay.get(dateKey(day)) ?? []}
+          tasks={tasksByDay.get(ymd(day)) ?? []}
+          onAdd={() => setChooserOpen(true)}
+          onPress={openEdit}
+          onPressTask={openEditTask}
+          onToggleTask={toggleTask}
+        />
       ) : view === 'week' ? (
-        <WeekView weekStart={startOfWeek(day)} byDay={byDay} today={today} onPressEvent={openEdit} onAddDay={openAdd} />
+        <WeekView
+          weekStart={startOfWeek(day)}
+          byDay={byDay}
+          tasksByDay={tasksByDay}
+          today={today}
+          onPressEvent={openEdit}
+          onPressTask={openEditTask}
+          onToggleTask={toggleTask}
+          onAddDay={openAdd}
+        />
       ) : (
         <MonthView
           month={day}
           byDay={byDay}
+          tasksByDay={tasksByDay}
           today={today}
           onPickDay={(d) => {
             setDay(startOfDay(d));
@@ -527,6 +673,122 @@ export default function PlanningScreen() {
           </KeyboardAvoidingView>
         </Pressable>
       </Modal>
+
+      {/* Feuille : Événement ou Tâche */}
+      <Modal visible={chooserOpen} transparent animationType="fade" onRequestClose={() => setChooserOpen(false)}>
+        <Pressable style={styles.bottomBackdrop} onPress={() => setChooserOpen(false)}>
+          <Pressable style={[styles.addSheet, { paddingBottom: insets.bottom + Spacing.md }]} onPress={() => {}}>
+            <View style={styles.sheetHandle} />
+            <Tappable style={styles.addRow} onPress={() => { setChooserOpen(false); openAdd(); }} haptic={false}>
+              <Ionicons name="calendar-outline" size={22} color={Palette.text} />
+              <Text variant="bodyStrong" style={{ flex: 1 }}>
+                Nouvel événement
+              </Text>
+              <Ionicons name="chevron-forward" size={18} color={Palette.textMuted} />
+            </Tappable>
+            <Tappable style={[styles.addRow, { borderBottomWidth: 0 }]} onPress={() => openAddTask()} haptic={false}>
+              <Ionicons name="checkbox-outline" size={22} color={Palette.text} />
+              <Text variant="bodyStrong" style={{ flex: 1 }}>
+                Nouvelle tâche
+              </Text>
+              <Ionicons name="chevron-forward" size={18} color={Palette.textMuted} />
+            </Tappable>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* Modale : création / modification d'une tâche */}
+      <Modal visible={taskOpen} transparent animationType="fade" onRequestClose={closeTask}>
+        <Pressable style={styles.backdrop} onPress={closeTask}>
+          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+            <Pressable style={styles.sheet} onPress={() => {}}>
+              <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+                <View style={styles.sheetHead}>
+                  <Text variant="heading">{taskEditing ? 'Modifier la tâche' : 'Nouvelle tâche'}</Text>
+                  {taskEditing ? (
+                    <Tappable onPress={onDeleteTask} hitSlop={10} accessibilityLabel="Supprimer">
+                      <Ionicons name="trash-outline" size={22} color={Palette.danger} />
+                    </Tappable>
+                  ) : null}
+                </View>
+
+                <TextInput
+                  style={styles.input}
+                  placeholder="Tâche (ex. Faire les courses)"
+                  placeholderTextColor={Palette.textMuted}
+                  value={taskTitle}
+                  onChangeText={setTaskTitle}
+                  maxLength={80}
+                />
+
+                <Row label="Échéance">
+                  <Tappable onPress={() => setTaskShowDate((s) => !s)} hitSlop={6}>
+                    <Text variant="bodyStrong" color={Palette.primary}>
+                      {fmtDateShort(taskDate)}
+                    </Text>
+                  </Tappable>
+                </Row>
+                {taskShowDate ? (
+                  <DateTimePicker
+                    value={taskDate}
+                    mode="date"
+                    display={Platform.OS === 'ios' ? 'inline' : 'default'}
+                    onChange={(_e, d) => {
+                      if (Platform.OS !== 'ios') setTaskShowDate(false);
+                      if (d) setTaskDate(startOfDay(d));
+                    }}
+                  />
+                ) : null}
+
+                <Text variant="small" color={Palette.textSecondary} style={{ marginTop: Spacing.sm }}>
+                  Catégorie
+                </Text>
+                <View style={styles.catRow}>
+                  {CATEGORIES.map((c) => {
+                    const active = c.key === taskCategory;
+                    return (
+                      <Tappable
+                        key={c.key}
+                        style={[styles.catChip, active && { backgroundColor: c.color + '33', borderColor: c.color }]}
+                        onPress={() => setTaskCategory(c.key)}
+                        haptic={false}>
+                        <View style={[styles.catDot, { backgroundColor: c.color }]} />
+                        <Text variant="small" color={active ? Palette.text : Palette.textSecondary}>
+                          {c.label}
+                        </Text>
+                      </Tappable>
+                    );
+                  })}
+                </View>
+
+                <TextInput
+                  style={styles.descInput}
+                  placeholder="Note (facultatif)"
+                  placeholderTextColor={Palette.textMuted}
+                  value={taskDesc}
+                  onChangeText={setTaskDesc}
+                  multiline
+                  textAlignVertical="top"
+                />
+
+                <View style={styles.actions}>
+                  <View style={{ flex: 1 }}>
+                    <Button label="Annuler" variant="ghost" onPress={closeTask} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Button
+                      label={taskEditing ? 'Enregistrer' : 'Créer'}
+                      onPress={saveTask}
+                      loading={taskSaving}
+                      disabled={!taskTitle.trim() || taskSaving}
+                    />
+                  </View>
+                </View>
+              </ScrollView>
+            </Pressable>
+          </KeyboardAvoidingView>
+        </Pressable>
+      </Modal>
     </Screen>
   );
 }
@@ -570,47 +832,101 @@ function EventRow({ item, onPress }: { item: EventItem; onPress: () => void }) {
   );
 }
 
+function TaskRow({
+  item,
+  onPress,
+  onToggle,
+}: {
+  item: TaskItem;
+  onPress: () => void;
+  onToggle: () => void;
+}) {
+  const cat = categoryOf(item.category);
+  return (
+    <Tappable style={styles.taskRow} onPress={onPress} haptic={false}>
+      <Pressable hitSlop={8} onPress={onToggle} accessibilityLabel="Terminer la tâche">
+        <View style={[styles.checkbox, item.done && { backgroundColor: cat.color, borderColor: cat.color }]}>
+          {item.done ? <Ionicons name="checkmark" size={15} color="#06130C" /> : null}
+        </View>
+      </Pressable>
+      <View style={{ flex: 1 }}>
+        <Text
+          variant="bodyStrong"
+          numberOfLines={2}
+          color={item.done ? Palette.textMuted : Palette.text}
+          style={item.done ? { textDecorationLine: 'line-through' } : undefined}>
+          {item.title}
+        </Text>
+        <Text variant="small" color={Palette.textMuted}>
+          {cat.label}
+        </Text>
+      </View>
+      <View style={[styles.catDot, { backgroundColor: cat.color }]} />
+    </Tappable>
+  );
+}
+
 function DayView({
   events,
+  tasks,
   onAdd,
   onPress,
+  onPressTask,
+  onToggleTask,
 }: {
   events: EventItem[];
+  tasks: TaskItem[];
   onAdd: () => void;
   onPress: (e: EventItem) => void;
+  onPressTask: (t: TaskItem) => void;
+  onToggleTask: (t: TaskItem) => void;
 }) {
-  if (events.length === 0) {
+  if (events.length === 0 && tasks.length === 0) {
     return (
       <EmptyState
         icon="sunny-outline"
         title="Journée libre"
-        subtitle="Rien de prévu ce jour. Ajoute une activité pour organiser ta journée.">
-        <Button label="Ajouter une activité" onPress={onAdd} />
+        subtitle="Rien de prévu ce jour. Ajoute une activité ou une tâche pour organiser ta journée.">
+        <Button label="Ajouter" onPress={onAdd} />
       </EmptyState>
     );
   }
   return (
-    <FlatList
-      data={events}
-      keyExtractor={(e) => e.id}
-      contentContainerStyle={styles.list}
-      showsVerticalScrollIndicator={false}
-      renderItem={({ item }) => <EventRow item={item} onPress={() => onPress(item)} />}
-    />
+    <ScrollView contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}>
+      {events.map((e) => (
+        <EventRow key={e.id} item={e} onPress={() => onPress(e)} />
+      ))}
+      {tasks.length > 0 ? (
+        <>
+          <Text variant="small" color={Palette.textMuted} style={styles.sectionLabel}>
+            TÂCHES
+          </Text>
+          {tasks.map((t) => (
+            <TaskRow key={t.id} item={t} onPress={() => onPressTask(t)} onToggle={() => onToggleTask(t)} />
+          ))}
+        </>
+      ) : null}
+    </ScrollView>
   );
 }
 
 function WeekView({
   weekStart,
   byDay,
+  tasksByDay,
   today,
   onPressEvent,
+  onPressTask,
+  onToggleTask,
   onAddDay,
 }: {
   weekStart: Date;
   byDay: Map<string, EventItem[]>;
+  tasksByDay: Map<string, TaskItem[]>;
   today: Date;
   onPressEvent: (e: EventItem) => void;
+  onPressTask: (t: TaskItem) => void;
+  onToggleTask: (t: TaskItem) => void;
   onAddDay: (d: Date) => void;
 }) {
   const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
@@ -618,6 +934,7 @@ function WeekView({
     <ScrollView contentContainerStyle={styles.weekBody} showsVerticalScrollIndicator={false}>
       {days.map((d) => {
         const evs = byDay.get(dateKey(d)) ?? [];
+        const tks = tasksByDay.get(ymd(d)) ?? [];
         const isToday = sameDay(d, today);
         return (
           <View key={dateKey(d)} style={styles.weekDay}>
@@ -629,25 +946,46 @@ function WeekView({
                 <Ionicons name="add" size={20} color={Palette.textSecondary} />
               </Tappable>
             </View>
-            {evs.length === 0 ? (
+            {evs.length === 0 && tks.length === 0 ? (
               <Text variant="small" color={Palette.textMuted} style={{ paddingVertical: Spacing.xs }}>
                 Libre
               </Text>
             ) : (
-              evs.map((e) => {
-                const cat = categoryOf(e.category);
-                return (
-                  <Tappable key={e.id} style={styles.weekEvent} onPress={() => onPressEvent(e)} haptic={false}>
-                    <View style={[styles.weekDot, { backgroundColor: cat.color }]} />
-                    <Text variant="small" color={Palette.textSecondary} style={{ width: 46 }}>
-                      {e.all_day ? 'Jour' : fmtTime(e.starts_at)}
-                    </Text>
-                    <Text variant="bodyStrong" numberOfLines={1} style={{ flex: 1 }}>
-                      {e.title}
-                    </Text>
-                  </Tappable>
-                );
-              })
+              <>
+                {evs.map((e) => {
+                  const cat = categoryOf(e.category);
+                  return (
+                    <Tappable key={e.id} style={styles.weekEvent} onPress={() => onPressEvent(e)} haptic={false}>
+                      <View style={[styles.weekDot, { backgroundColor: cat.color }]} />
+                      <Text variant="small" color={Palette.textSecondary} style={{ width: 46 }}>
+                        {e.all_day ? 'Jour' : fmtTime(e.starts_at)}
+                      </Text>
+                      <Text variant="bodyStrong" numberOfLines={1} style={{ flex: 1 }}>
+                        {e.title}
+                      </Text>
+                    </Tappable>
+                  );
+                })}
+                {tks.map((t) => {
+                  const cat = categoryOf(t.category);
+                  return (
+                    <Tappable key={t.id} style={styles.weekEvent} onPress={() => onPressTask(t)} haptic={false}>
+                      <Pressable hitSlop={8} onPress={() => onToggleTask(t)} accessibilityLabel="Terminer la tâche">
+                        <View style={[styles.weekCheck, t.done && { backgroundColor: cat.color, borderColor: cat.color }]}>
+                          {t.done ? <Ionicons name="checkmark" size={12} color="#06130C" /> : null}
+                        </View>
+                      </Pressable>
+                      <Text
+                        variant="bodyStrong"
+                        numberOfLines={1}
+                        color={t.done ? Palette.textMuted : Palette.text}
+                        style={[{ flex: 1 }, t.done ? { textDecorationLine: 'line-through' } : null]}>
+                        {t.title}
+                      </Text>
+                    </Tappable>
+                  );
+                })}
+              </>
             )}
           </View>
         );
@@ -661,11 +999,13 @@ const WEEKDAY_LABELS = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
 function MonthView({
   month,
   byDay,
+  tasksByDay,
   today,
   onPickDay,
 }: {
   month: Date;
   byDay: Map<string, EventItem[]>;
+  tasksByDay: Map<string, TaskItem[]>;
   today: Date;
   onPickDay: (d: Date) => void;
 }) {
@@ -684,7 +1024,8 @@ function MonthView({
         {cells.map((d) => {
           const inMonth = d.getMonth() === month.getMonth();
           const isToday = sameDay(d, today);
-          const has = (byDay.get(dateKey(d)) ?? []).length > 0;
+          const has =
+            (byDay.get(dateKey(d)) ?? []).length > 0 || (tasksByDay.get(ymd(d)) ?? []).length > 0;
           return (
             <Pressable key={dateKey(d)} style={styles.cell} onPress={() => onPickDay(d)}>
               <View style={[styles.cellInner, isToday && styles.cellToday]}>
@@ -784,6 +1125,57 @@ const styles = StyleSheet.create({
   },
   timeCol: { width: 52 },
   catBar: { width: 4, alignSelf: 'stretch', borderRadius: 2 },
+  sectionLabel: { marginTop: Spacing.md, marginBottom: Spacing.xs, marginLeft: Spacing.xs, letterSpacing: 0.6 },
+  taskRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+    backgroundColor: Palette.surface,
+    borderRadius: Radius.lg,
+    padding: Spacing.md,
+  },
+  checkbox: {
+    width: 24,
+    height: 24,
+    borderRadius: 7,
+    borderWidth: 2,
+    borderColor: Palette.textMuted,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  weekCheck: {
+    width: 18,
+    height: 18,
+    borderRadius: 5,
+    borderWidth: 2,
+    borderColor: Palette.textMuted,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bottomBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
+  addSheet: {
+    backgroundColor: Palette.surfaceElevated,
+    borderTopLeftRadius: Radius.lg,
+    borderTopRightRadius: Radius.lg,
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.sm,
+  },
+  sheetHandle: {
+    alignSelf: 'center',
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: Palette.border,
+    marginBottom: Spacing.sm,
+  },
+  addRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+    paddingVertical: Spacing.md + 2,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: Palette.border,
+  },
   // Semaine
   weekBody: { paddingHorizontal: Spacing.lg, paddingBottom: Spacing.xl },
   weekDay: {

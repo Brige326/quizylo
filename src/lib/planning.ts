@@ -107,3 +107,87 @@ export async function deleteEvent(id: string): Promise<void> {
   const { error } = await supabase.from('events').delete().eq('id', id);
   if (error) throw error;
 }
+
+/* ---------- Tâches (PL-4) ---------- */
+
+export type TaskItem = {
+  id: string;
+  user_id: string;
+  title: string;
+  category: string;
+  due_date: string; // 'YYYY-MM-DD'
+  done: boolean;
+  description: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+/** Tâches dont l'échéance est dans [startYmd, endYmd) (dates au format 'YYYY-MM-DD'). */
+export async function listTasksBetween(
+  userId: string,
+  startYmd: string,
+  endYmd: string,
+): Promise<TaskItem[]> {
+  const { data, error } = await supabase
+    .from('tasks')
+    .select('*')
+    .eq('user_id', userId)
+    .gte('due_date', startYmd)
+    .lt('due_date', endYmd)
+    .order('done', { ascending: true })
+    .order('created_at', { ascending: true });
+  if (error) throw error;
+  return (data ?? []) as TaskItem[];
+}
+
+export async function createTask(params: {
+  userId: string;
+  title: string;
+  category: string;
+  dueDate: string;
+  description?: string | null;
+}): Promise<TaskItem> {
+  const { data, error } = await supabase
+    .from('tasks')
+    .insert({
+      user_id: params.userId,
+      title: params.title.trim(),
+      category: params.category,
+      due_date: params.dueDate,
+      description: params.description ?? null,
+    })
+    .select('*')
+    .single();
+  if (error) throw error;
+  return data as TaskItem;
+}
+
+export async function updateTask(
+  id: string,
+  params: { title: string; category: string; dueDate: string; description?: string | null },
+): Promise<void> {
+  const { error } = await supabase
+    .from('tasks')
+    .update({
+      title: params.title.trim(),
+      category: params.category,
+      due_date: params.dueDate,
+      description: params.description ?? null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', id);
+  if (error) throw error;
+}
+
+export async function setTaskDone(id: string, done: boolean): Promise<void> {
+  const { error } = await supabase
+    .from('tasks')
+    .update({ done, updated_at: new Date().toISOString() })
+    .eq('id', id);
+  if (error) throw error;
+}
+
+export async function deleteTask(id: string): Promise<void> {
+  const { error } = await supabase.from('tasks').delete().eq('id', id);
+  if (error) throw error;
+}
