@@ -228,6 +228,18 @@ export default function LeconScreen() {
     ]);
   };
 
+  const insertMenu = () => {
+    Alert.alert('Insérer', undefined, [
+      { text: 'Titre', onPress: () => addTextBlock('heading') },
+      { text: 'Sous-titre', onPress: () => addTextBlock('subheading') },
+      { text: 'Texte', onPress: () => addTextBlock('text') },
+      { text: 'Prendre une photo', onPress: takePhoto },
+      { text: 'Importer une image', onPress: pickImage },
+      { text: 'Importer un PDF', onPress: pickPdf },
+      { text: 'Annuler', style: 'cancel' },
+    ]);
+  };
+
   const updateBlock = (id: string, text: string) =>
     setBlocks((prev) => prev.map((b) => (b.id === id ? { ...b, text } : b)));
 
@@ -378,6 +390,8 @@ export default function LeconScreen() {
     );
   };
 
+  const focusedBlock = blocks.find((b) => b.id === focusId && !isMediaBlock(b.type)) ?? null;
+
   return (
     <Screen>
       {/* En-tête */}
@@ -487,33 +501,94 @@ export default function LeconScreen() {
             <View style={{ height: 24 }} />
           </ScrollView>
 
-          {/* Barre d'insertion */}
-          <View style={[styles.toolbar, { paddingBottom: insets.bottom + Spacing.sm }]}>
-            <Tappable style={styles.tool} onPress={() => addTextBlock('heading')} scaleTo={0.92}>
-              <Ionicons name="text" size={18} color={Palette.text} />
-              <Text variant="small" color={Palette.textSecondary}>
-                Titre
-              </Text>
-            </Tappable>
-            <Tappable style={styles.tool} onPress={() => addTextBlock('subheading')} scaleTo={0.92}>
-              <Ionicons name="text-outline" size={18} color={Palette.text} />
-              <Text variant="small" color={Palette.textSecondary}>
-                Sous-titre
-              </Text>
-            </Tappable>
-            <Tappable style={styles.tool} onPress={() => addTextBlock('text')} scaleTo={0.92}>
-              <Ionicons name="reorder-four-outline" size={18} color={Palette.text} />
-              <Text variant="small" color={Palette.textSecondary}>
-                Texte
-              </Text>
-            </Tappable>
-            <Tappable style={styles.tool} onPress={attachMenu} scaleTo={0.92}>
-              <Ionicons name="attach" size={18} color={Palette.text} />
-              <Text variant="small" color={Palette.textSecondary}>
-                Joindre
-              </Text>
-            </Tappable>
-          </View>
+          {/* Barre contextuelle : mise en forme du bloc actif, sinon insertion */}
+          {focusedBlock ? (
+            <View style={[styles.toolbar, { paddingBottom: insets.bottom + Spacing.sm }]}>
+              <Tappable
+                style={[styles.fmtBtn, focusedBlock.type === 'heading' && styles.fmtActive]}
+                onPress={() => changeType(focusedBlock.id, 'heading')}
+                scaleTo={0.9}
+                accessibilityLabel="Titre">
+                <Ionicons
+                  name="text"
+                  size={19}
+                  color={focusedBlock.type === 'heading' ? color : Palette.text}
+                />
+              </Tappable>
+              <Tappable
+                style={[styles.fmtBtn, focusedBlock.type === 'subheading' && styles.fmtActive]}
+                onPress={() => changeType(focusedBlock.id, 'subheading')}
+                scaleTo={0.9}
+                accessibilityLabel="Sous-titre">
+                <Ionicons
+                  name="text-outline"
+                  size={17}
+                  color={focusedBlock.type === 'subheading' ? color : Palette.text}
+                />
+              </Tappable>
+              <Tappable
+                style={[styles.fmtBtn, focusedBlock.type === 'text' && styles.fmtActive]}
+                onPress={() => changeType(focusedBlock.id, 'text')}
+                scaleTo={0.9}
+                accessibilityLabel="Texte">
+                <Ionicons
+                  name="reorder-four-outline"
+                  size={18}
+                  color={focusedBlock.type === 'text' ? color : Palette.text}
+                />
+              </Tappable>
+              <View style={styles.fmtSep} />
+              <Tappable
+                style={styles.fmtBtn}
+                onPress={() => setColorPicker(focusedBlock)}
+                scaleTo={0.9}
+                accessibilityLabel="Couleur">
+                <View style={[styles.fmtColorDot, { backgroundColor: focusedBlock.color ?? '#FFFFFF' }]} />
+              </Tappable>
+              <Tappable
+                style={styles.fmtBtn}
+                onPress={() => confirmRemove(focusedBlock)}
+                scaleTo={0.9}
+                accessibilityLabel="Supprimer">
+                <Ionicons name="trash-outline" size={18} color={Palette.textMuted} />
+              </Tappable>
+              <View style={{ flex: 1 }} />
+              <Tappable
+                style={[styles.fmtBtn, styles.fmtAdd]}
+                onPress={insertMenu}
+                scaleTo={0.9}
+                accessibilityLabel="Insérer">
+                <Ionicons name="add" size={22} color={Palette.onPrimary} />
+              </Tappable>
+            </View>
+          ) : (
+            <View style={[styles.toolbar, { paddingBottom: insets.bottom + Spacing.sm }]}>
+              <Tappable style={styles.tool} onPress={() => addTextBlock('heading')} scaleTo={0.92}>
+                <Ionicons name="text" size={18} color={Palette.text} />
+                <Text variant="small" color={Palette.textSecondary}>
+                  Titre
+                </Text>
+              </Tappable>
+              <Tappable style={styles.tool} onPress={() => addTextBlock('subheading')} scaleTo={0.92}>
+                <Ionicons name="text-outline" size={18} color={Palette.text} />
+                <Text variant="small" color={Palette.textSecondary}>
+                  Sous-titre
+                </Text>
+              </Tappable>
+              <Tappable style={styles.tool} onPress={() => addTextBlock('text')} scaleTo={0.92}>
+                <Ionicons name="reorder-four-outline" size={18} color={Palette.text} />
+                <Text variant="small" color={Palette.textSecondary}>
+                  Texte
+                </Text>
+              </Tappable>
+              <Tappable style={styles.tool} onPress={attachMenu} scaleTo={0.92}>
+                <Ionicons name="attach" size={18} color={Palette.text} />
+                <Text variant="small" color={Palette.textSecondary}>
+                  Joindre
+                </Text>
+              </Tappable>
+            </View>
+          )}
         </KeyboardAvoidingView>
       )}
 
@@ -662,6 +737,25 @@ const styles = StyleSheet.create({
     borderRadius: Radius.md,
     backgroundColor: Palette.surface,
   },
+  fmtBtn: {
+    width: 38,
+    height: 42,
+    borderRadius: Radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Palette.surface,
+    marginRight: 6,
+  },
+  fmtActive: { backgroundColor: Palette.primarySurface },
+  fmtSep: { width: StyleSheet.hairlineWidth, height: 26, backgroundColor: Palette.border, marginRight: 6 },
+  fmtColorDot: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: Palette.border,
+  },
+  fmtAdd: { backgroundColor: Palette.primary, marginRight: 0 },
   uploadOverlay: {
     position: 'absolute',
     top: 0,
