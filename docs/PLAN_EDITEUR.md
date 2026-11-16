@@ -170,3 +170,21 @@ Tableaux, mathématiques (KaTeX/MathLive), chimie, graphiques, polices custom,
 dessin : non fournis par le bundle TenTap par défaut. Il faudra builder et héberger
 un bundle TipTap sur-mesure (extensions supplémentaires) passé en `customSource`.
 Chantier distinct à planifier avant Phase 4/5.
+
+### Pipeline de build du bundle custom (plan)
+
+1. Entrée web de l'éditeur avec le runtime TenTap (`useTenTap` + `EditorContent`
+   de `@10play/tentap-editor/web`), kit par défaut + extensions voulues
+   (d'abord Table/TableRow/TableHeader/TableCell).
+2. Un **bridge Table** (BridgeExtension : `insertTable`, add/delete row/col,
+   messages d'état) côté web ET côté natif, pour piloter le tableau depuis la barre.
+3. Bundler l'entrée web en **HTML autonome** (JS inliné) → chaîne `customSource`.
+4. Côté RN : `useEditorBridge({ customSource, bridgeExtensions: [...kit, TableBridge] })`.
+5. Boutons natifs (insérer tableau, +/- ligne/colonne).
+6. Étendre le convertisseur/`content` pour stocker les nœuds `table` (round-trip).
+7. Tests : rendu + insertion en navigateur (auto) ; rendu natif sur appareil.
+
+**S10 — Dé-risquage tableaux** : faisabilité prouvée en navigateur (TipTap Table :
+insertion 3×3, en-tête, rendu propre, nœud `table` dans le JSON — capture). Extensions
+`@tiptap/extension-table*` installées. Reste : étapes 1→6 ci-dessus (bundle + bridge
++ câblage natif), menées séance par séance.
