@@ -72,3 +72,54 @@ export async function deleteSubject(id: string): Promise<void> {
   const { error } = await supabase.from('subjects').delete().eq('id', id);
   if (error) throw error;
 }
+
+/* ---------- Chapitres (MC-2) ---------- */
+
+export type Chapter = {
+  id: string;
+  subject_id: string;
+  user_id: string;
+  name: string;
+  position: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export async function listChapters(subjectId: string): Promise<Chapter[]> {
+  const { data, error } = await supabase
+    .from('chapters')
+    .select('*')
+    .eq('subject_id', subjectId)
+    .order('position', { ascending: true })
+    .order('created_at', { ascending: true });
+  if (error) throw error;
+  return (data ?? []) as Chapter[];
+}
+
+export async function createChapter(
+  userId: string,
+  subjectId: string,
+  name: string,
+  position: number,
+): Promise<Chapter> {
+  const { data, error } = await supabase
+    .from('chapters')
+    .insert({ user_id: userId, subject_id: subjectId, name: name.trim(), position })
+    .select('*')
+    .single();
+  if (error) throw error;
+  return data as Chapter;
+}
+
+export async function renameChapter(id: string, name: string): Promise<void> {
+  const { error } = await supabase
+    .from('chapters')
+    .update({ name: name.trim(), updated_at: new Date().toISOString() })
+    .eq('id', id);
+  if (error) throw error;
+}
+
+export async function deleteChapter(id: string): Promise<void> {
+  const { error } = await supabase.from('chapters').delete().eq('id', id);
+  if (error) throw error;
+}

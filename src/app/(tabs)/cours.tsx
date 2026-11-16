@@ -31,7 +31,6 @@ import {
   SUBJECT_COLORS,
   type Subject,
 } from '@/lib/courses';
-import { comingSoon } from '@/lib/ui';
 
 export default function MesCoursScreen() {
   const { session, isGuest, exitGuest } = useAuth();
@@ -232,7 +231,12 @@ export default function MesCoursScreen() {
           renderItem={({ item }) => (
             <SubjectCard
               subject={item}
-              onOpen={() => comingSoon('Chapitres')}
+              onOpen={() =>
+                router.push({
+                  pathname: '/matiere/[id]',
+                  params: { id: item.id, name: item.name, color: item.color },
+                })
+              }
               onOptions={() => onOptions(item)}
             />
           )}
