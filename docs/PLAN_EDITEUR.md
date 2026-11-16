@@ -245,6 +245,16 @@ gomme dans `DrawingModal` (via `__setColor`/`__setWidth` injectés). Auto-test
 navigateur : 3 traits de couleurs/épaisseurs distinctes, pixel rose = #FF4D8D exact,
 0 erreur. `tsc` = 0, export web OK.
 
+**S20 — Polices personnalisées** : extension `FontFamily` ajoutée au bundle ; polices
+Lora (serif) et Caveat (manuscrite) **inlinées** (@font-face base64) dans le build.
+Sélecteur de police dans l'éditeur (Standard / Serif / Manuscrit) via
+`setFontFamily`/`unsetFontFamily` (injectJS). Auto-test navigateur : polices
+**appliquées ET chargées** (document.fonts.check OK), Caveat nettement manuscrite
+(capture), 0 erreur. `tsc` = 0, export web OK. Bundle ~2,1 Mo.
+
+➡️ **Cahier des charges couvert** : texte riche, couleur, surlignage, polices, images,
+tableaux, maths, chimie, graphiques, dessin — saisie iOS + Android, autosave, migration.
+
 ### Limite de test (honnête)
 
 Le rendu natif dans la WebView iOS (Expo Go sur iPhone) n'est pas testable depuis

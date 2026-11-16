@@ -9,6 +9,7 @@ import { TableRow } from '@tiptap/extension-table-row';
 import { TableHeader } from '@tiptap/extension-table-header';
 import { TableCell } from '@tiptap/extension-table-cell';
 import { Mathematics } from '@tiptap/extension-mathematics';
+import { FontFamily } from '@tiptap/extension-font-family';
 // Étend KaTeX avec \ce{...} pour les équations chimiques (même moteur que les maths).
 import 'katex/contrib/mhchem';
 
@@ -22,6 +23,7 @@ function EditorWeb() {
         TableHeader,
         TableCell,
         Mathematics,
+        FontFamily,
       ],
     },
   });

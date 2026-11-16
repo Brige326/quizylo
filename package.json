@@ -12,6 +12,7 @@
     "@react-native-async-storage/async-storage": "^2.2.0",
     "@react-native-community/datetimepicker": "^9.2.1",
     "@supabase/supabase-js": "^2.119.0",
+    "@tiptap/extension-font-family": "^3.34.0",
     "@tiptap/extension-mathematics": "^3.34.0",
     "@tiptap/extension-table": "^3.34.0",
     "@tiptap/extension-table-cell": "^3.34.0",

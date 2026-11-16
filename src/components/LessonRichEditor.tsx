@@ -123,6 +123,17 @@ export const LessonRichEditor = forwardRef<LessonRichEditorHandle, Props>(functi
   const clearColor = () =>
     colorMode === 'text' ? editor.unsetColor() : editor.unsetHighlight();
 
+  // Police de la sélection (via le bundle web : setFontFamily / unsetFontFamily).
+  const setFont = (family: string | null) => {
+    const js = family
+      ? `window.__quizyloEditor && window.__quizyloEditor.chain().focus().setFontFamily(${JSON.stringify(
+          family,
+        )}).run();`
+      : 'window.__quizyloEditor && window.__quizyloEditor.chain().focus().unsetFontFamily().run();';
+    editor.injectJS(js);
+    scheduleSave();
+  };
+
   // Insertion d'image exposée au parent.
   useImperativeHandle(
     ref,
@@ -215,6 +226,19 @@ export const LessonRichEditor = forwardRef<LessonRichEditorHandle, Props>(functi
         </ScrollView>
       </View>
 
+      {/* Police de la sélection */}
+      <View style={styles.fontBar}>
+        <Pressable onPress={() => setFont(null)} style={styles.fontChip}>
+          <Text style={styles.fontChipText}>Standard</Text>
+        </Pressable>
+        <Pressable onPress={() => setFont('Lora')} style={styles.fontChip}>
+          <Text style={[styles.fontChipText, { fontFamily: 'Lora_400Regular' }]}>Serif</Text>
+        </Pressable>
+        <Pressable onPress={() => setFont('Caveat')} style={styles.fontChip}>
+          <Text style={[styles.fontChipText, { fontFamily: 'Caveat_400Regular' }]}>Manuscrit</Text>
+        </Pressable>
+      </View>
+
       <RichText editor={editor} />
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -246,6 +270,22 @@ const styles = StyleSheet.create({
     borderRightColor: 'rgba(255,255,255,0.12)',
   },
   modeLabel: { color: '#FFFFFF', fontSize: 12, fontWeight: '600' },
+  fontBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(255,255,255,0.08)',
+  },
+  fontChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+  },
+  fontChipText: { color: '#FFFFFF', fontSize: 14 },
   colorRow: {
     flexDirection: 'row',
     alignItems: 'center',

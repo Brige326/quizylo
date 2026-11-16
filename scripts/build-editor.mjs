@@ -23,6 +23,24 @@ function katexCssInlined() {
   return css;
 }
 
+// Polices personnalisées inlinées (@font-face base64) : serif (Lora) et manuscrite
+// (Caveat), pour que l'éditeur WebView les ait sans réseau.
+function customFontFaces() {
+  const faces = [
+    { family: 'Lora', file: 'node_modules/@expo-google-fonts/lora/400Regular/Lora_400Regular.ttf' },
+    {
+      family: 'Caveat',
+      file: 'node_modules/@expo-google-fonts/caveat/400Regular/Caveat_400Regular.ttf',
+    },
+  ];
+  return faces
+    .map(({ family, file }) => {
+      const b64 = readFileSync(resolve(root, file)).toString('base64');
+      return `@font-face{font-family:'${family}';font-style:normal;font-weight:400 700;src:url(data:font/ttf;base64,${b64}) format('truetype');}`;
+    })
+    .join('\n');
+}
+
 const result = await build({
   entryPoints: [resolve(root, 'editor-web/index.tsx')],
   bundle: true,
@@ -39,6 +57,8 @@ const js = result.outputFiles[0].text;
 // Styles : KaTeX (polices inlinées) + bordures de tableau + médias.
 const css =
   katexCssInlined() +
+  '\n' +
+  customFontFaces() +
   '\n' +
   `
 table{border-collapse:collapse;width:100%;margin:12px 0;table-layout:fixed}
