@@ -186,5 +186,15 @@ Chantier distinct à planifier avant Phase 4/5.
 
 **S10 — Dé-risquage tableaux** : faisabilité prouvée en navigateur (TipTap Table :
 insertion 3×3, en-tête, rendu propre, nœud `table` dans le JSON — capture). Extensions
-`@tiptap/extension-table*` installées. Reste : étapes 1→6 ci-dessus (bundle + bridge
-+ câblage natif), menées séance par séance.
+`@tiptap/extension-table*` installées.
+
+**S11 — Bundle custom, étape 1 (pipeline + tableaux rendus)** : ✅ étapes 1 et 3 du
+pipeline. `editor-web/index.tsx` (runtime `@10play/tentap-editor/web` : `useTenTap`
++ `TenTapStartKit` + extensions Table) ; `scripts/build-editor.mjs` (esbuild →
+HTML autonome) ; artefact généré `src/editor-web/editorHtml.ts` (~930 Ko).
+`editor-web` exclu du typecheck de l'app. **Auto-test** : l'artefact généré, amorcé
+via le vrai boot config TenTap avec un tableau en contenu initial, **boote et rend le
+tableau** dans un navigateur (ProseMirror + table + cellules, 0 erreur — capture).
+Reste : étape 2 (bridge Table pour insérer/éditer depuis la barre), étape 4 (câbler
+`customSource` dans `LessonRichEditor`), étape 5 (boutons natifs), étape 6 (round-trip
+`content`), puis test appareil.
