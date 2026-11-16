@@ -29,11 +29,14 @@ import { useAuth } from '@/contexts/auth';
 import {
   createNote,
   deleteDocument,
+  listChapters,
   listDocuments,
+  moveDocument,
   renameDocument,
   signedUrlFor,
   updateNoteContent,
   uploadFileDocument,
+  type Chapter,
   type DocItem,
 } from '@/lib/courses';
 
@@ -84,6 +87,10 @@ export default function ChapitreDocumentsScreen() {
 
   // Visionneuse image
   const [imageUrl, setImageUrl] = useState<string | null>(null);
+
+  // Déplacer vers un autre chapitre
+  const [moveDoc, setMoveDoc] = useState<DocItem | null>(null);
+  const [moveChapters, setMoveChapters] = useState<Chapter[]>([]);
 
   const load = useCallback(async () => {
     if (!chapterId) return;
@@ -251,6 +258,7 @@ export default function ChapitreDocumentsScreen() {
           }
         },
       },
+      { text: 'Déplacer', onPress: () => openMove(d) },
       {
         text: 'Supprimer',
         style: 'destructive',
@@ -273,6 +281,38 @@ export default function ChapitreDocumentsScreen() {
       },
       { text: 'Annuler', style: 'cancel' },
     ]);
+  };
+
+  const openMove = async (d: DocItem) => {
+    if (!subjectId) return;
+    try {
+      const all = await listChapters(subjectId);
+      const others = all.filter((c) => c.id !== chapterId);
+      if (others.length === 0) {
+        Alert.alert(
+          'Aucun autre chapitre',
+          'Crée un autre chapitre dans cette matière pour pouvoir y déplacer ce document.',
+        );
+        return;
+      }
+      setMoveChapters(others);
+      setMoveDoc(d);
+    } catch {
+      Alert.alert('Oups', "Impossible de charger les chapitres pour le moment.");
+    }
+  };
+
+  const doMove = async (targetChapterId: string) => {
+    const d = moveDoc;
+    if (!d) return;
+    setMoveDoc(null);
+    setDocs((prev) => prev.filter((x) => x.id !== d.id)); // il quitte ce chapitre
+    try {
+      await moveDocument(d.id, targetChapterId);
+    } catch {
+      Alert.alert('Oups', "Le document n'a pas pu être déplacé.");
+      load();
+    }
   };
 
   const saveRename = async () => {
@@ -433,6 +473,33 @@ export default function ChapitreDocumentsScreen() {
               </View>
             </Pressable>
           </KeyboardAvoidingView>
+        </Pressable>
+      </Modal>
+
+      {/* Déplacer vers un autre chapitre */}
+      <Modal visible={moveDoc !== null} transparent animationType="fade" onRequestClose={() => setMoveDoc(null)}>
+        <Pressable style={styles.backdrop} onPress={() => setMoveDoc(null)}>
+          <Pressable style={[styles.addSheet, { paddingBottom: insets.bottom + Spacing.md }]} onPress={() => {}}>
+            <View style={styles.sheetHandle} />
+            <Text variant="heading" style={{ marginBottom: Spacing.sm }}>
+              Déplacer vers…
+            </Text>
+            {moveChapters.map((c, i) => (
+              <Tappable
+                key={c.id}
+                style={[styles.addRow, i === moveChapters.length - 1 && { borderBottomWidth: 0 }]}
+                onPress={() => doMove(c.id)}
+                haptic={false}>
+                <View style={[styles.docIcon, { backgroundColor: color + '22' }]}>
+                  <Ionicons name="list" size={18} color={color} />
+                </View>
+                <Text variant="bodyStrong" numberOfLines={1} style={{ flex: 1 }}>
+                  {c.name}
+                </Text>
+                <Ionicons name="chevron-forward" size={18} color={Palette.textMuted} />
+              </Tappable>
+            ))}
+          </Pressable>
         </Pressable>
       </Modal>
 

@@ -266,6 +266,14 @@ export async function renameDocument(id: string, title: string): Promise<void> {
   if (error) throw error;
 }
 
+export async function moveDocument(id: string, chapterId: string): Promise<void> {
+  const { error } = await supabase
+    .from('documents')
+    .update({ chapter_id: chapterId, updated_at: new Date().toISOString() })
+    .eq('id', id);
+  if (error) throw error;
+}
+
 export async function deleteDocument(doc: DocItem): Promise<void> {
   if (doc.storage_path) {
     await supabase.storage.from(DOCS_BUCKET).remove([doc.storage_path]);
