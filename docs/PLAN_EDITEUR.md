@@ -233,6 +233,13 @@ légende). Entrée « Insérer un graphique (fonction) » → SVG inséré comme
 navigateur **et dans l'éditeur réel** (parabole affichée dans le bundle app, capture),
 0 erreur. `tsc` = 0, export web OK.
 
+**S18 — Dessin à main levée** : `src/lib/drawingHtml.ts` (canvas dans une WebView,
+dessin au doigt/stylet, export PNG via postMessage) + `DrawingModal` (WebView +
+Annuler/Insérer/Effacer). Fonctionne en Expo Go (pas de module natif). Entrée
+« Dessiner un croquis » → croquis inséré comme image. Auto-test navigateur : traits
+dessinés → export PNG (data URI) capturé, rendu correct (capture), 0 erreur.
+`tsc` = 0, export web OK.
+
 ### Limite de test (honnête)
 
 Le rendu natif dans la WebView iOS (Expo Go sur iPhone) n'est pas testable depuis

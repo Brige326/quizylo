@@ -22,6 +22,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
 
+import { DrawingModal } from '@/components/DrawingModal';
 import { LessonRichEditor, type LessonRichEditorHandle } from '@/components/LessonRichEditor';
 import { functionPlotSvg } from '@/lib/plot';
 import { Screen } from '@/components/ui/Screen';
@@ -83,6 +84,7 @@ export default function LeconScreen() {
   // Saisie de formule (maths/chimie) — modale compatible iOS et Android.
   const [formula, setFormula] = useState<{ kind: 'math' | 'chem' | 'plot' } | null>(null);
   const [formulaText, setFormulaText] = useState('');
+  const [drawing, setDrawing] = useState(false);
   const [saveState, setSaveState] = useState<SaveState>('saved');
   const [focusId, setFocusId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -365,6 +367,7 @@ export default function LeconScreen() {
       { text: 'Insérer une formule (maths)', onPress: insertMathPrompt },
       { text: 'Insérer une formule chimique', onPress: insertChemPrompt },
       { text: 'Insérer un graphique (fonction)', onPress: () => openFormula('plot') },
+      { text: 'Dessiner un croquis', onPress: () => setDrawing(true) },
       { text: 'Prendre une photo', onPress: takePhotoInline },
       { text: 'Importer une image', onPress: pickImageInline },
       { text: 'Importer un PDF', onPress: pickPdf },
@@ -1031,6 +1034,15 @@ export default function LeconScreen() {
           </Pressable>
         </KeyboardAvoidingView>
       </Modal>
+
+      <DrawingModal
+        visible={drawing}
+        onCancel={() => setDrawing(false)}
+        onInsert={(dataUri) => {
+          setDrawing(false);
+          richRef.current?.insertImage(dataUri);
+        }}
+      />
     </Screen>
   );
 }
