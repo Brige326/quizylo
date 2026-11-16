@@ -147,3 +147,16 @@ début de chaque séance**, pas d'avance.
   insertion → nœud image dans le JSON + rendu DOM + data URI préservé. `tsc` = 0,
   export web OK. Limite assumée : poids des data URI (à surveiller ; bascule
   possible vers nœuds `path` plus tard).
+- **S7 — Couleur du texte** : barre de couleurs dans l'éditeur
+  (`editor.setColor()` / `unsetColor()`, palette `LESSON_TEXT_COLORS`) — parité
+  avec l'ancien éditeur. La barre TenTap par défaut couvre déjà
+  gras/italique/souligné/barré/titres/listes/cases à cocher/citation/code/lien/
+  undo-redo. Auto-test moteur : sélection → `setColor` → `<span style="color…">`.
+  `tsc` = 0, export web OK.
+
+## Ce qui exige un bundle d'éditeur web personnalisé (phase d'infra à part)
+
+Tableaux, mathématiques (KaTeX/MathLive), chimie, graphiques, polices custom,
+dessin : non fournis par le bundle TenTap par défaut. Il faudra builder et héberger
+un bundle TipTap sur-mesure (extensions supplémentaires) passé en `customSource`.
+Chantier distinct à planifier avant Phase 4/5.

@@ -5,9 +5,17 @@
 
 import { RichText, Toolbar, useEditorBridge } from '@10play/tentap-editor';
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef } from 'react';
-import { KeyboardAvoidingView, Platform, StyleSheet, View } from 'react-native';
+import {
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 
-import { saveLessonContent, type LessonBlock } from '@/lib/courses';
+import { LESSON_TEXT_COLORS, saveLessonContent, type LessonBlock } from '@/lib/courses';
 import { blocksToDoc, isEmptyDoc, type TipTapDoc } from '@/lib/lessonContent';
 
 export type LessonRichEditorHandle = {
@@ -107,6 +115,30 @@ export const LessonRichEditor = forwardRef<LessonRichEditorHandle, Props>(functi
 
   return (
     <View style={styles.root}>
+      {/* Couleur du texte : sélectionne du texte puis choisis une couleur. */}
+      <View style={styles.colorBar}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={styles.colorRow}>
+          <Pressable
+            onPress={() => editor.unsetColor()}
+            style={styles.colorDefault}
+            accessibilityLabel="Couleur par défaut">
+            <Text style={styles.colorDefaultText}>A</Text>
+          </Pressable>
+          {LESSON_TEXT_COLORS.map((c) => (
+            <Pressable
+              key={c}
+              onPress={() => editor.setColor(c)}
+              style={[styles.swatch, { backgroundColor: c }]}
+              accessibilityLabel={`Couleur ${c}`}
+            />
+          ))}
+        </ScrollView>
+      </View>
+
       <RichText editor={editor} />
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -121,4 +153,32 @@ export const LessonRichEditor = forwardRef<LessonRichEditorHandle, Props>(functi
 const styles = StyleSheet.create({
   root: { flex: 1 },
   toolbar: { position: 'absolute', left: 0, right: 0, bottom: 0 },
+  colorBar: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(255,255,255,0.08)',
+  },
+  colorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  colorDefault: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.4)',
+  },
+  colorDefaultText: { color: '#FFFFFF', fontWeight: '700', fontSize: 14 },
+  swatch: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(0,0,0,0.25)',
+  },
 });
