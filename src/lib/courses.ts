@@ -475,6 +475,42 @@ export async function uploadFileDocument(params: {
   return data as DocItem;
 }
 
+/**
+ * Téléverse un document pour un PARCOURS (image ou PDF) dans le bucket privé, sans créer de
+ * ligne `documents` ni exiger de chapitre. Renvoie le chemin Storage à passer à la génération.
+ */
+export async function uploadParcoursDocument(params: {
+  userId: string;
+  kind: 'image' | 'pdf';
+  uri: string;
+  name?: string;
+  mime?: string;
+}): Promise<{ path: string }> {
+  const { userId, kind, uri, name, mime } = params;
+  const buffer = await new File(uri).arrayBuffer();
+  const ext = extFor(name, mime);
+  const path = `${userId}/parcours/${uid()}.${ext}`;
+  const { error: upErr } = await supabase.storage.from(DOCS_BUCKET).upload(path, buffer, {
+    contentType: mime ?? (kind === 'pdf' ? 'application/pdf' : 'image/jpeg'),
+    upsert: false,
+  });
+  if (upErr) throw upErr;
+  return { path };
+}
+
+/** Tous les documents (images + PDF) d'une matière, tous chapitres confondus. */
+export async function listSubjectDocuments(subjectId: string): Promise<DocItem[]> {
+  const { data, error } = await supabase
+    .from('documents')
+    .select('*')
+    .eq('subject_id', subjectId)
+    .in('kind', ['pdf', 'image'])
+    .not('storage_path', 'is', null)
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as DocItem[];
+}
+
 export async function signedUrlFor(path: string): Promise<string> {
   const { data, error } = await supabase.storage.from(DOCS_BUCKET).createSignedUrl(path, 3600);
   if (error) throw error;

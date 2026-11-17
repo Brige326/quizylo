@@ -18,7 +18,7 @@ fiche, résumé) et la base `generated_content`.
 
 ## Séances
 - **P1** ✅ — Fondations IA (multimodale) + données.
-- **P2** — Assistant écrans 1 & 2 : matière, puis ajout/import des documents (+ récap).
+- **P2** ✅ — Assistant écrans 1 & 2 : matière, puis ajout/import des documents (+ récap).
 - **P3** — Assistant écrans 3 & 4 : format + difficulté + niveau, bouton Générer.
 - **P4** — Génération + résultat : chargement soigné → résumé explicatif puis contenu ; sauvegarde.
 - **P5** — Finitions pro : historique par matière, regénérer, score conservé, états vides, QA multi-niveaux.
@@ -44,3 +44,18 @@ fiche, résumé) et la base `generated_content`.
 - **Vérifs** : migration OK ; esbuild (fonction) OK ; `tsc` app = 0.
 - **Non testable d'ici** : l'appel multimodal réel (mon environnement ne joint pas `supabase.co`) →
   se confirmera en P4 sur l'iPhone, quand le parcours déclenchera la génération. Aucune UI modifiée en P1.
+
+### P2 ✅ — Assistant, écrans 1 & 2
+- Nouvel écran `src/app/parcours/nouveau.tsx` (modale depuis le bas), ouvert par le bouton
+  « Créer un parcours » de l'onglet Parcours (plus de `comingSoon`).
+- Barre de progression 4 étapes. **Étape 1** : choix de la matière (depuis `listSubjects`, pastille
+  couleur + nb de chapitres ; état vide → CTA « Aller à Mes cours »). **Étape 2** : ajout des documents
+  — import (caméra/photos/PDF via ImagePicker/DocumentPicker, images converties en JPEG, upload via
+  `uploadParcoursDocument` sans exiger de chapitre) **et** sélection depuis « Mes cours »
+  (`listSubjectDocuments`). Liste « Sélectionnés (n) » avec retrait, CTA actif dès 1 document.
+- Helpers ajoutés à `courses.ts` : `uploadParcoursDocument` (upload sans ligne documents/chapitre) et
+  `listSubjectDocuments` (images+PDF d'une matière, tous chapitres).
+- Auto-test web (captures) : étape 1, étape 2, et état sélectionné → rendu conforme, 0 erreur console.
+  `tsc` = 0. Bloc de démo (PREV) retiré avant commit (vérifié, aucun résidu).
+- Non couvert ici : le « Continuer » ouvre un `comingSoon` (format/difficulté/niveau = P3) ; l'import
+  réel (caméra/fichiers) et l'upload se valident sur l'iPhone.
