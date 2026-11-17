@@ -41,7 +41,13 @@ Améliorations retenues :
     `saveLessonNote`, `listLessonAttachments`, `uploadAndAddAttachment`,
     `removeLessonAttachment`, `renameLessonAttachment`, `setAttachmentFavorite`,
     type `LessonAttachment`. `tsc` = 0.
-  - **S3** : écran leçon v2 (note simple + bibliothèque de ressources, état vide soigné).
+  - **S3** ✅ : écran leçon v2. En-tête (retour, badge d'enregistrement, bouton +),
+    **titre** + **note texte simple** (autosave), section **Ressources** = liste de
+    cartes (miniature image / icône par type, nom, type, favori ⭐, menu ⋯), **état
+    vide** soigné avec bouton Ajouter. Ajout (photo / images multi / documents),
+    ouverture (image plein écran, PDF in-app iOS, autres via le système), favori,
+    suppression. Auto-test visuel web (états avec ressources + vide, 0 erreur,
+    captures). `tsc` = 0, export web OK.
 - **Phase C — Import & affichage parfait**
   - **S4** : images (photo/galerie multi, HEIC→JPEG, miniatures, visionneuse + zoom).
   - **S5** : documents (PDF affiché parfaitement ; autres formats = carte + ouverture).
