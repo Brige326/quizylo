@@ -319,7 +319,7 @@ export default function AccueilScreen() {
               </View>
               <Tappable
                 style={styles.seeAll}
-                onPress={() => comingSoon('Voir tous les sujets')}>
+                onPress={() => router.push('/sujets')}>
                 <Text variant="small" color={Palette.primary}>
                   Voir tous les sujets
                 </Text>

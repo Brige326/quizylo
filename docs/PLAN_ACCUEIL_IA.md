@@ -50,7 +50,12 @@ adaptée à Quizylo (mascotte et branding à nous, pas ceux de la référence).
     existant. Auto-test web (rendu conforme à la maquette, 0 erreur, capture).
     `tsc` = 0, export web OK.
 - **Phase B — Sujets**
-  - **S2** : écran « Voir tous les sujets » (recherche + catégories + multi-sélection).
+  - **S2** ✅ : écran `/sujets` « Voir tous les sujets » — recherche, toutes les
+    catégories (data `src/lib/subjects.ts`, icône/couleur par sujet), multi-sélection
+    (puce cochée = couleur du groupe), « Propose un sujet », bouton bas
+    « Choisis-en au moins 1 » → « Continuer (N) ». Lien « Voir tous les sujets » de
+    l'accueil câblé. Auto-test web : écran rendu + 2 sélections + compteur (capture),
+    0 erreur. `tsc` = 0, export web OK. (Mémorisation + routage chat = S3.)
   - **S3** : sélection d'un sujet → chat ; mémorisation des sujets choisis.
 - **Phase C — Outils**
   - **S4** : écran « Outils » (mêmes sections/boutons).
