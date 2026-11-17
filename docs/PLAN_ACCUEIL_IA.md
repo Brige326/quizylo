@@ -74,7 +74,16 @@ adaptée à Quizylo (mascotte et branding à nous, pas ceux de la référence).
     honnête en attendant le branchement IA (S5/S6). Auto-test web : rendu conforme
     (2 captures), 0 erreur console. `tsc` = 0, export web OK.
 - **Phase D — IA**
-  - **S5** : chat IA réel via Edge Function Supabase (clé jamais exposée).
+  - **S5** ✅ : chat IA réel via Edge Functions Supabase. **Un seul modèle partout :
+    `claude-haiku-5-5`** (décision produit). Les 3 fonctions (`chat`, `generate-content`,
+    `organize-day`) réécrites pour l'**API Anthropic native** (endpoint `/v1/messages`,
+    en-têtes `x-api-key` + `anthropic-version`, `system` en tête, parsing `content[].text`),
+    lisant le secret **`ANTHROPIC_API_KEY`** (jamais exposé à l'app). Repli honnête si clé
+    absente (`configured:false`) ou erreur (message clair selon le code HTTP). Déployées
+    (v3) ; code source versionné dans `supabase/functions/`. Contrats d'E/S inchangés →
+    aucune modif app (l'accueil appelait déjà `chat`). `tsc` = 0 (Deno exclu du typecheck app),
+    syntaxe des 3 fonctions validée (esbuild). **Non testable d'ici** : l'appel réel (mon
+    environnement ne joint pas `supabase.co`) → à confirmer sur l'iPhone ; logs lisibles ensuite.
   - **S6** : outils actifs (Quiz, Résumé, Cartes…) = prompts vers l'IA.
   - **S7** : finitions (points/streak, historique), QA.
 
