@@ -73,7 +73,10 @@ Améliorations retenues :
     suppression déjà en place. Message « Aucun résultat » si filtre/recherche vide.
     Auto-test web : barre + filtres rendus, recherche « fiche » → 1 résultat (captures),
     0 erreur. `tsc` = 0, export web OK. (Réorganisation manuelle = optionnel plus tard.)
-  - **S8** : finitions UX + nettoyage final des dépendances.
+  - **S8** ✅ : finitions UX. Placeholders de **chargement** des miniatures (spinner
+    pendant la résolution de l'URL signée), bouton **« Réinitialiser »** quand une
+    recherche/filtre ne donne rien, **libellés d'accessibilité** sur les cartes et
+    tuiles. Dépendances déjà nettoyées au pivot (S1). `tsc` = 0, export web OK.
 - **Phase E — Qualité**
   - **S9** : QA + test appareil.
 

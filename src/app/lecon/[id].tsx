@@ -590,12 +590,21 @@ export default function LeconScreen() {
               </ScrollView>
 
               {visibleItems.length === 0 ? (
-                <Text
-                  variant="body"
-                  color={Palette.textMuted}
-                  style={{ textAlign: 'center', marginTop: Spacing.xl }}>
-                  Aucun résultat.
-                </Text>
+                <View style={{ alignItems: 'center', marginTop: Spacing.xl, gap: Spacing.md }}>
+                  <Text variant="body" color={Palette.textMuted}>
+                    Aucun résultat.
+                  </Text>
+                  <Pressable
+                    onPress={() => {
+                      setQuery('');
+                      setFilter('all');
+                    }}
+                    style={styles.resetBtn}>
+                    <Text variant="small" color={Palette.text}>
+                      Réinitialiser
+                    </Text>
+                  </Pressable>
+                </View>
               ) : view === 'grid' ? (
                 <View style={styles.gridWrap}>
                   {visibleItems.map((it) => {
@@ -606,10 +615,13 @@ export default function LeconScreen() {
                     key={it.id}
                     onPress={() => open(it)}
                     onLongPress={() => itemMenu(it)}
+                    accessibilityLabel={`${it.name ?? 'Sans nom'}, ${meta.label}`}
                     style={[styles.tile, { width: tileW }]}>
                     <View style={[styles.tileThumb, !thumb && { backgroundColor: meta.color + '22' }]}>
                       {thumb ? (
                         <Image source={{ uri: thumb }} style={styles.tileImg} resizeMode="cover" />
+                      ) : it.kind === 'image' ? (
+                        <ActivityIndicator color={meta.color} />
                       ) : (
                         <Ionicons name={meta.icon} size={34} color={meta.color} />
                       )}
@@ -636,10 +648,13 @@ export default function LeconScreen() {
                   key={it.id}
                   onPress={() => open(it)}
                   onLongPress={() => itemMenu(it)}
+                  accessibilityLabel={`${it.name ?? 'Sans nom'}, ${meta.label}`}
                   style={styles.card}>
                   <View style={[styles.thumb, !thumb && { backgroundColor: meta.color + '22' }]}>
                     {thumb ? (
                       <Image source={{ uri: thumb }} style={styles.thumbImg} resizeMode="cover" />
+                    ) : it.kind === 'image' ? (
+                      <ActivityIndicator size="small" color={meta.color} />
                     ) : (
                       <Ionicons name={meta.icon} size={24} color={meta.color} />
                     )}
@@ -869,6 +884,12 @@ const styles = StyleSheet.create({
     backgroundColor: Palette.surface,
   },
   chipActive: { backgroundColor: Palette.primary },
+  resetBtn: {
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.sm,
+    borderRadius: Radius.md,
+    backgroundColor: Palette.surface,
+  },
   renameOverlay: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   renameBackdrop: {
     position: 'absolute',
