@@ -650,7 +650,8 @@ export type GenPayload =
 export type GenItem = {
   id: string;
   user_id: string;
-  subject_id: string;
+  subject_id: string | null;
+  subject_label: string | null;
   chapter_id: string | null;
   source_document_id: string | null;
   kind: GenKind;
@@ -719,7 +720,8 @@ export async function generateFromDocuments(params: {
 
 export async function saveGeneratedContent(params: {
   userId: string;
-  subjectId: string;
+  subjectId?: string | null;
+  subjectLabel?: string | null;
   chapterId?: string | null;
   sourceDocumentId?: string | null;
   kind: GenKind;
@@ -733,7 +735,8 @@ export async function saveGeneratedContent(params: {
     .from('generated_content')
     .insert({
       user_id: params.userId,
-      subject_id: params.subjectId,
+      subject_id: params.subjectId ?? null,
+      subject_label: params.subjectLabel ?? null,
       chapter_id: params.chapterId ?? null,
       source_document_id: params.sourceDocumentId ?? null,
       kind: params.kind,

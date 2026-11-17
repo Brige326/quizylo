@@ -99,3 +99,17 @@ fiche, résumé) et la base `generated_content`.
   documents source du parcours (non conservés aujourd'hui) — à prévoir si besoin.
 
 L'espace Parcours est fonctionnellement complet (P1→P5). Reste la QA réelle sur appareil.
+
+### P6 ✅ — Choix de matière libre (catalogue complet)
+- L'écran 1 ne se limite plus aux matières de « Mes cours ». Il propose :
+  **barre de recherche**, section **« Mes matières »** (celles enregistrées, si présentes),
+  et section **catalogue complet** (`SUBJECT_GROUPS`, identique à « Voir tous les sujets »),
+  groupée et colorée, en chips icône + libellé.
+- **Matière libre** : choisir une matière du catalogue non enregistrée crée un parcours sans
+  l'ajouter à « Mes cours » (`subject_id` null + `subject_label`). Si la matière existe déjà dans
+  Mes cours (même nom), on relie automatiquement à sa fiche (ses documents deviennent disponibles).
+- « Depuis Mes cours » (étape 2) ne s'affiche que pour une matière enregistrée ; une matière libre
+  passe par l'import direct.
+- **Base** : migration `generated_content_free_subject` → `subject_id` nullable + colonne `subject_label`.
+  `saveGeneratedContent` accepte désormais subjectId null + subjectLabel.
+- Auto-test web : catalogue groupé + recherche (« phys » → Physique) → conformes, 0 erreur. `tsc` = 0.

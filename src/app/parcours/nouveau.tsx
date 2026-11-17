@@ -3,7 +3,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -11,6 +11,7 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
+  TextInput,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -30,8 +31,18 @@ import {
   type Level,
   type Subject,
 } from '@/lib/courses';
+import { SUBJECT_GROUPS } from '@/lib/subjects';
 
 type DocKind = 'image' | 'pdf';
+// Matière choisie : soit une matière enregistrée (id), soit une matière libre du catalogue (id null).
+type ChosenSubject = { id: string | null; name: string; color: string };
+
+function norm(s: string): string {
+  return s
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '');
+}
 
 type Format = { key: GenKind; label: string; icon: keyof typeof Ionicons.glyphMap; color: string; desc: string };
 const FORMATS: Format[] = [
@@ -108,7 +119,8 @@ export default function NouveauParcoursScreen() {
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [loadingSubjects, setLoadingSubjects] = useState(true);
 
-  const [subject, setSubject] = useState<Subject | null>(null);
+  const [subject, setSubject] = useState<ChosenSubject | null>(null);
+  const [query, setQuery] = useState('');
   const [courseDocs, setCourseDocs] = useState<DocItem[]>([]);
   const [loadingDocs, setLoadingDocs] = useState(false);
   const [selected, setSelected] = useState<SelectedDoc[]>([]);
@@ -137,18 +149,43 @@ export default function NouveauParcoursScreen() {
     loadSubjects();
   }, [loadSubjects]);
 
-  const chooseSubject = async (s: Subject) => {
-    setSubject(s);
+  const chooseSubject = async (c: ChosenSubject) => {
+    setSubject(c);
     setStep(2);
+    if (!c.id) {
+      setCourseDocs([]);
+      return;
+    }
     setLoadingDocs(true);
     try {
-      setCourseDocs(await listSubjectDocuments(s.id));
+      setCourseDocs(await listSubjectDocuments(c.id));
     } catch {
       setCourseDocs([]);
     } finally {
       setLoadingDocs(false);
     }
   };
+
+  // Choisir une matière du catalogue : si l'utilisateur l'a déjà dans Mes cours, on relie à sa fiche.
+  const chooseCatalog = (label: string, color: string) => {
+    const existing = subjects.find((s) => norm(s.name) === norm(label));
+    chooseSubject(existing ? { id: existing.id, name: existing.name, color: existing.color } : { id: null, name: label, color });
+  };
+
+  // Filtrage par recherche.
+  const q = norm(query.trim());
+  const mySubjects = useMemo(
+    () => (q ? subjects.filter((s) => norm(s.name).includes(q)) : subjects),
+    [subjects, q],
+  );
+  const catalogGroups = useMemo(
+    () =>
+      SUBJECT_GROUPS.map((g) => ({
+        ...g,
+        items: q ? g.items.filter((it) => norm(it.label).includes(q)) : g.items,
+      })).filter((g) => g.items.length > 0),
+    [q],
+  );
 
   const addSelected = (d: SelectedDoc) => setSelected((cur) => [...cur, d]);
   const removeSelected = (key: string) => setSelected((cur) => cur.filter((d) => d.key !== key));
@@ -307,6 +344,7 @@ export default function NouveauParcoursScreen() {
       const item = await saveGeneratedContent({
         userId,
         subjectId: subject.id,
+        subjectLabel: subject.name,
         kind,
         title,
         payload: res.payload,
@@ -343,51 +381,95 @@ export default function NouveauParcoursScreen() {
       {step === 1 ? (
         <ScrollView
           contentContainerStyle={[styles.body, { paddingBottom: insets.bottom + Spacing.xl }]}
-          showsVerticalScrollIndicator={false}>
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled">
           <Text variant="title" style={styles.h1}>
             Choisis la matière
           </Text>
           <Text variant="body" color={Palette.textSecondary} style={styles.sub}>
-            Le parcours se basera sur tes documents de cette matière.
+            Une de tes matières, ou n'importe quelle matière proposée.
           </Text>
+
+          <View style={styles.search}>
+            <Ionicons name="search" size={18} color={Palette.textMuted} />
+            <TextInput
+              value={query}
+              onChangeText={setQuery}
+              placeholder="Rechercher une matière…"
+              placeholderTextColor={Palette.textMuted}
+              style={styles.searchInput}
+              autoCorrect={false}
+            />
+            {query ? (
+              <Pressable onPress={() => setQuery('')} hitSlop={8} accessibilityLabel="Effacer">
+                <Ionicons name="close-circle" size={18} color={Palette.textMuted} />
+              </Pressable>
+            ) : null}
+          </View>
 
           {loadingSubjects ? (
             <ActivityIndicator color={Palette.primary} style={{ marginTop: Spacing.xl }} />
-          ) : subjects.length === 0 ? (
-            <View style={styles.empty}>
-              <Ionicons name="folder-open-outline" size={40} color={Palette.textMuted} />
-              <Text variant="body" color={Palette.textSecondary} center style={{ marginTop: Spacing.md }}>
-                Aucune matière pour l'instant. Crée-en une dans « Mes cours » pour démarrer.
-              </Text>
-              <Pressable
-                onPress={() => router.replace('/(tabs)/cours')}
-                style={({ pressed }) => [styles.cta, pressed && styles.pressed]}>
-                <Text variant="bodyStrong" color={Palette.onPrimary}>
-                  Aller à Mes cours
-                </Text>
-              </Pressable>
-            </View>
           ) : (
-            <View style={{ gap: Spacing.sm }}>
-              {subjects.map((s) => (
-                <Pressable
-                  key={s.id}
-                  onPress={() => chooseSubject(s)}
-                  style={({ pressed }) => [styles.subjectRow, pressed && styles.pressed]}
-                  accessibilityLabel={s.name}>
-                  <View style={[styles.subjectDot, { backgroundColor: s.color }]} />
-                  <View style={{ flex: 1 }}>
-                    <Text variant="bodyStrong" color={Palette.text}>
-                      {s.name}
-                    </Text>
-                    <Text variant="caption" color={Palette.textMuted}>
-                      {s.chapter_count ?? 0} chapitre{(s.chapter_count ?? 0) > 1 ? 's' : ''}
-                    </Text>
+            <>
+              {mySubjects.length > 0 ? (
+                <>
+                  <Text variant="bodyStrong" color={Palette.textSecondary} style={styles.sectionTitle}>
+                    Mes matières
+                  </Text>
+                  <View style={{ gap: Spacing.sm }}>
+                    {mySubjects.map((s) => (
+                      <Pressable
+                        key={s.id}
+                        onPress={() => chooseSubject({ id: s.id, name: s.name, color: s.color })}
+                        style={({ pressed }) => [styles.subjectRow, pressed && styles.pressed]}
+                        accessibilityLabel={s.name}>
+                        <View style={[styles.subjectDot, { backgroundColor: s.color }]} />
+                        <View style={{ flex: 1 }}>
+                          <Text variant="bodyStrong" color={Palette.text}>
+                            {s.name}
+                          </Text>
+                          <Text variant="caption" color={Palette.textMuted}>
+                            {s.chapter_count ?? 0} chapitre{(s.chapter_count ?? 0) > 1 ? 's' : ''}
+                          </Text>
+                        </View>
+                        <Ionicons name="chevron-forward" size={18} color={Palette.textMuted} />
+                      </Pressable>
+                    ))}
                   </View>
-                  <Ionicons name="chevron-forward" size={18} color={Palette.textMuted} />
-                </Pressable>
-              ))}
-            </View>
+                </>
+              ) : null}
+
+              <Text variant="bodyStrong" color={Palette.textSecondary} style={styles.sectionTitle}>
+                {mySubjects.length > 0 ? 'Toutes les matières' : 'Choisis une matière'}
+              </Text>
+              {catalogGroups.length === 0 ? (
+                <Text variant="caption" color={Palette.textMuted}>
+                  Aucune matière ne correspond à ta recherche.
+                </Text>
+              ) : (
+                catalogGroups.map((g) => (
+                  <View key={g.title} style={{ marginBottom: Spacing.md }}>
+                    <Text variant="caption" color={g.color} style={styles.groupTitle}>
+                      {g.title}
+                    </Text>
+                    <View style={styles.catalogWrap}>
+                      {g.items.map((it) => (
+                        <Pressable
+                          key={it.key}
+                          onPress={() => chooseCatalog(it.label, g.color)}
+                          style={({ pressed }) => [styles.catChip, pressed && styles.pressed]}
+                          accessibilityLabel={it.label}>
+                          <Ionicons name={it.icon} size={15} color={g.color} />
+                          <Text variant="caption" color={Palette.text}>
+                            {it.label}
+                          </Text>
+                        </Pressable>
+                      ))}
+                    </View>
+                  </View>
+                ))
+              )}
+            </>
           )}
         </ScrollView>
       ) : step === 2 ? (
@@ -449,11 +531,12 @@ export default function NouveauParcoursScreen() {
               </>
             ) : null}
 
-            {/* Depuis Mes cours */}
-            <Text variant="bodyStrong" color={Palette.textSecondary} style={styles.sectionTitle}>
-              Depuis Mes cours
-            </Text>
-            {loadingDocs ? (
+            {subject?.id ? (
+              <>
+                <Text variant="bodyStrong" color={Palette.textSecondary} style={styles.sectionTitle}>
+                  Depuis Mes cours
+                </Text>
+                {loadingDocs ? (
               <ActivityIndicator color={Palette.primary} style={{ marginTop: Spacing.sm }} />
             ) : courseDocs.length === 0 ? (
               <Text variant="caption" color={Palette.textMuted}>
@@ -485,6 +568,8 @@ export default function NouveauParcoursScreen() {
                 })}
               </View>
             )}
+              </>
+            ) : null}
           </ScrollView>
 
           {/* Pied : continuer */}
@@ -649,6 +734,28 @@ const styles = StyleSheet.create({
   h1: { marginTop: Spacing.sm },
   sub: { marginTop: 4, marginBottom: Spacing.lg },
   sectionTitle: { marginTop: Spacing.lg, marginBottom: Spacing.sm },
+  search: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    backgroundColor: Palette.surface,
+    borderRadius: Radius.md,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    marginBottom: Spacing.xs,
+  },
+  searchInput: { flex: 1, color: Palette.text, paddingVertical: 2 },
+  groupTitle: { textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: Spacing.sm },
+  catalogWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
+  catChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: Palette.surface,
+    borderRadius: Radius.pill,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+  },
   empty: { alignItems: 'center', marginTop: Spacing.xxl, paddingHorizontal: Spacing.lg },
   subjectRow: {
     flexDirection: 'row',
