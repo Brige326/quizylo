@@ -34,7 +34,13 @@ Améliorations retenues :
     graphiques, dessin, polices, `/lab`, dépendances). Écran leçon rétabli en version
     simple par blocs (provisoire). Données en base intactes. `tsc` = 0, export web OK.
 - **Phase B — La leçon simple**
-  - **S2** : modèle de données (note texte simple + ressources via `lesson_attachments`).
+  - **S2** ✅ : modèle de données. Migration `lesson_note_and_attachment_favorite`
+    (colonne `lessons.note`, colonne `lesson_attachments.favorite`). Reprise des
+    données existantes : notes depuis les blocs texte, médias (image/pdf) vers
+    `lesson_attachments` (idempotent, sans doublon). Couche `courses.ts` :
+    `saveLessonNote`, `listLessonAttachments`, `uploadAndAddAttachment`,
+    `removeLessonAttachment`, `renameLessonAttachment`, `setAttachmentFavorite`,
+    type `LessonAttachment`. `tsc` = 0.
   - **S3** : écran leçon v2 (note simple + bibliothèque de ressources, état vide soigné).
 - **Phase C — Import & affichage parfait**
   - **S4** : images (photo/galerie multi, HEIC→JPEG, miniatures, visionneuse + zoom).

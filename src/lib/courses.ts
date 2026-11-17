@@ -188,8 +188,27 @@ export type Lesson = {
   title: string;
   position: number;
   blocks: LessonBlock[];
+  /** Note texte simple de la leçon (nouveau modèle). */
+  note: string | null;
   created_at: string;
   updated_at: string;
+};
+
+/** Type de ressource attachée à une leçon. */
+export type LessonAttachmentKind = 'image' | 'pdf' | 'document' | 'audio' | 'other';
+
+export type LessonAttachment = {
+  id: string;
+  lesson_id: string;
+  user_id: string;
+  kind: LessonAttachmentKind;
+  storage_path: string;
+  mime: string | null;
+  name: string | null;
+  size_bytes: number | null;
+  favorite: boolean;
+  position: number;
+  created_at: string;
 };
 
 export async function listLessons(chapterId: string): Promise<Lesson[]> {
@@ -200,7 +219,11 @@ export async function listLessons(chapterId: string): Promise<Lesson[]> {
     .order('position', { ascending: true })
     .order('created_at', { ascending: true });
   if (error) throw error;
-  return ((data ?? []) as any[]).map((r) => ({ ...r, blocks: r.blocks ?? [] })) as Lesson[];
+  return ((data ?? []) as any[]).map((r) => ({
+    ...r,
+    blocks: r.blocks ?? [],
+    note: r.note ?? null,
+  })) as Lesson[];
 }
 
 export async function getLesson(id: string): Promise<Lesson | null> {
@@ -209,7 +232,86 @@ export async function getLesson(id: string): Promise<Lesson | null> {
     if ((error as any).code === 'PGRST116') return null;
     throw error;
   }
-  return { ...(data as any), blocks: (data as any).blocks ?? [] } as Lesson;
+  return { ...(data as any), blocks: (data as any).blocks ?? [], note: (data as any).note ?? null } as Lesson;
+}
+
+/** Enregistre la note texte simple de la leçon. */
+export async function saveLessonNote(id: string, note: string): Promise<void> {
+  const { error } = await supabase
+    .from('lessons')
+    .update({ note, updated_at: new Date().toISOString() })
+    .eq('id', id);
+  if (error) throw error;
+}
+
+// --- Ressources d'une leçon (lesson_attachments) ---
+
+export async function listLessonAttachments(lessonId: string): Promise<LessonAttachment[]> {
+  const { data, error } = await supabase
+    .from('lesson_attachments')
+    .select('*')
+    .eq('lesson_id', lessonId)
+    .order('position', { ascending: true })
+    .order('created_at', { ascending: true });
+  if (error) throw error;
+  return (data ?? []) as LessonAttachment[];
+}
+
+/** Téléverse un fichier local et crée la ressource associée. */
+export async function uploadAndAddAttachment(params: {
+  userId: string;
+  lessonId: string;
+  kind: LessonAttachmentKind;
+  uri: string;
+  name?: string;
+  mime?: string;
+  sizeBytes?: number;
+}): Promise<LessonAttachment> {
+  const { userId, lessonId, kind, uri, name, mime, sizeBytes } = params;
+  const buffer = await new File(uri).arrayBuffer();
+  const ext = extFor(name, mime);
+  const path = `${userId}/lessons/${lessonId}/${uid()}.${ext}`;
+  const { error: upErr } = await supabase.storage.from(DOCS_BUCKET).upload(path, buffer, {
+    contentType: mime ?? 'application/octet-stream',
+    upsert: false,
+  });
+  if (upErr) throw upErr;
+
+  const { data, error } = await supabase
+    .from('lesson_attachments')
+    .insert({
+      lesson_id: lessonId,
+      user_id: userId,
+      kind,
+      storage_path: path,
+      mime: mime ?? null,
+      name: name ?? null,
+      size_bytes: sizeBytes ?? null,
+    })
+    .select('*')
+    .single();
+  if (error) {
+    // On évite un fichier orphelin si l'insertion échoue.
+    await supabase.storage.from(DOCS_BUCKET).remove([path]).catch(() => {});
+    throw error;
+  }
+  return data as LessonAttachment;
+}
+
+export async function removeLessonAttachment(att: LessonAttachment): Promise<void> {
+  const { error } = await supabase.from('lesson_attachments').delete().eq('id', att.id);
+  if (error) throw error;
+  await supabase.storage.from(DOCS_BUCKET).remove([att.storage_path]).catch(() => {});
+}
+
+export async function renameLessonAttachment(id: string, name: string): Promise<void> {
+  const { error } = await supabase.from('lesson_attachments').update({ name }).eq('id', id);
+  if (error) throw error;
+}
+
+export async function setAttachmentFavorite(id: string, favorite: boolean): Promise<void> {
+  const { error } = await supabase.from('lesson_attachments').update({ favorite }).eq('id', id);
+  if (error) throw error;
 }
 
 export async function saveLessonBlocks(id: string, blocks: LessonBlock[]): Promise<void> {
