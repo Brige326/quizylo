@@ -55,7 +55,11 @@ Améliorations retenues :
     images, zoom par pincement via `maximumZoomScale` iOS, bouton fermer). Auto-test
     web : galerie rendue (image plein écran + fermer, 0 erreur, capture). `tsc` = 0,
     export web OK.
-  - **S5** : documents (PDF affiché parfaitement ; autres formats = carte + ouverture).
+  - **S5** ✅ : documents. Cartes **typées** (PDF rouge, Word bleu, Excel vert,
+    PowerPoint orange, texte/archive gris, audio violet) avec icône, libellé et
+    **taille du fichier** → reconnaissance immédiate. PDF affiché dans l'app (iOS),
+    autres formats ouverts via le système. Auto-test web : 6 types de cartes rendus
+    (capture), 0 erreur. `tsc` = 0, export web OK. (Aperçu 1re page PDF = S6.)
   - **S6** : miniatures/aperçus (1re page PDF) + visionneuse unifiée avec swipe.
 - **Phase D — Organisation**
   - **S7** : recherche, filtres, tri, renommer, favori, supprimer, réorganiser.

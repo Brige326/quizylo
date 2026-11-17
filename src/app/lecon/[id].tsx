@@ -56,11 +56,33 @@ function kindOf(mime?: string | null, name?: string | null): LessonAttachmentKin
   return 'document';
 }
 
-function iconFor(kind: LessonAttachmentKind): keyof typeof Ionicons.glyphMap {
-  if (kind === 'pdf') return 'document-text';
-  if (kind === 'audio') return 'musical-notes';
-  if (kind === 'document') return 'document';
-  return 'image';
+type DocMeta = { icon: keyof typeof Ionicons.glyphMap; color: string; label: string };
+
+/** Icône, couleur et libellé selon le type de fichier (pour reconnaître d'un coup d'œil). */
+function docMeta(it: { kind: LessonAttachmentKind; mime?: string | null; name?: string | null }): DocMeta {
+  const name = (it.name ?? '').toLowerCase();
+  const mime = (it.mime ?? '').toLowerCase();
+  const ext = name.includes('.') ? name.split('.').pop() ?? '' : '';
+  if (it.kind === 'image') return { icon: 'image', color: Palette.primary, label: 'Image' };
+  if (it.kind === 'pdf') return { icon: 'document-text', color: '#FF5A5F', label: 'PDF' };
+  if (it.kind === 'audio') return { icon: 'musical-notes', color: '#A855F7', label: 'Audio' };
+  if (/word|msword|wordprocessingml/.test(mime) || ['doc', 'docx'].includes(ext))
+    return { icon: 'document-text', color: '#2B7CD3', label: 'Word' };
+  if (/excel|spreadsheetml|ms-excel/.test(mime) || ['xls', 'xlsx'].includes(ext))
+    return { icon: 'grid', color: '#1E9E5A', label: 'Excel' };
+  if (ext === 'csv' || mime === 'text/csv') return { icon: 'grid', color: '#1E9E5A', label: 'CSV' };
+  if (/powerpoint|presentationml/.test(mime) || ['ppt', 'pptx'].includes(ext))
+    return { icon: 'easel', color: '#E8853B', label: 'PowerPoint' };
+  if (['zip', 'rar', '7z'].includes(ext)) return { icon: 'archive', color: '#9AA0A6', label: 'Archive' };
+  if (['txt', 'md', 'rtf'].includes(ext)) return { icon: 'document', color: '#9AA0A6', label: 'Texte' };
+  return { icon: 'document', color: '#9AA0A6', label: 'Document' };
+}
+
+function formatSize(bytes?: number | null): string {
+  if (!bytes || bytes <= 0) return '';
+  if (bytes < 1024) return `${bytes} o`;
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} Ko`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} Mo`;
 }
 
 /**
@@ -439,17 +461,19 @@ export default function LeconScreen() {
           ) : (
             items.map((it) => {
               const thumb = it.kind === 'image' ? urls[it.storage_path] : undefined;
+              const meta = docMeta(it);
+              const size = formatSize(it.size_bytes);
               return (
                 <Pressable
                   key={it.id}
                   onPress={() => open(it)}
                   onLongPress={() => itemMenu(it)}
                   style={styles.card}>
-                  <View style={styles.thumb}>
+                  <View style={[styles.thumb, !thumb && { backgroundColor: meta.color + '22' }]}>
                     {thumb ? (
                       <Image source={{ uri: thumb }} style={styles.thumbImg} resizeMode="cover" />
                     ) : (
-                      <Ionicons name={iconFor(it.kind)} size={24} color={color} />
+                      <Ionicons name={meta.icon} size={24} color={meta.color} />
                     )}
                   </View>
                   <View style={{ flex: 1 }}>
@@ -457,13 +481,7 @@ export default function LeconScreen() {
                       {it.name ?? 'Sans nom'}
                     </Text>
                     <Text variant="small" color={Palette.textMuted}>
-                      {it.kind === 'pdf'
-                        ? 'PDF'
-                        : it.kind === 'image'
-                          ? 'Image'
-                          : it.kind === 'audio'
-                            ? 'Audio'
-                            : 'Document'}
+                      {size ? `${meta.label} · ${size}` : meta.label}
                     </Text>
                   </View>
                   <Pressable onPress={() => toggleFav(it)} hitSlop={10} style={styles.star}>
