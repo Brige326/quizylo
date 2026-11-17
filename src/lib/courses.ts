@@ -749,6 +749,17 @@ export async function saveGeneratedContent(params: {
   return data as GenItem;
 }
 
+/** Tous les parcours générés par l'utilisateur, du plus récent au plus ancien. */
+export async function listUserGeneratedContent(userId: string): Promise<GenItem[]> {
+  const { data, error } = await supabase
+    .from('generated_content')
+    .select('*')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as GenItem[];
+}
+
 export async function listGeneratedContent(chapterId: string): Promise<GenItem[]> {
   const { data, error } = await supabase
     .from('generated_content')

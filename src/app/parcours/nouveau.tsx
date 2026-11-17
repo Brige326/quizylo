@@ -38,6 +38,8 @@ const FORMATS: Format[] = [
   { key: 'quiz', label: 'Quiz', icon: 'help-circle', color: '#5B8CFF', desc: 'Des questions à choix multiples, corrigées et expliquées.' },
   { key: 'fiche', label: 'Fiche de révision', icon: 'document-text', color: '#22E07B', desc: 'Les points clés organisés en sections claires.' },
   { key: 'resume', label: 'Résumé', icon: 'reader', color: '#A855F7', desc: 'Une synthèse fidèle de tes documents.' },
+  { key: 'flashcards', label: 'Cartes mémoire', icon: 'albums', color: '#F5B301', desc: 'Des cartes recto-verso pour mémoriser.' },
+  { key: 'examen', label: 'Examen blanc', icon: 'school', color: '#FF5A5F', desc: 'Un examen complet et progressif, corrigé.' },
 ];
 
 const DIFFICULTIES: { key: Difficulty; label: string }[] = [

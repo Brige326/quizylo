@@ -20,7 +20,7 @@ fiche, résumé) et la base `generated_content`.
 - **P1** ✅ — Fondations IA (multimodale) + données.
 - **P2** ✅ — Assistant écrans 1 & 2 : matière, puis ajout/import des documents (+ récap).
 - **P3** ✅ — Assistant écrans 3 & 4 : format + difficulté + niveau, Générer (réel).
-- **P4** — Génération + résultat : chargement soigné → résumé explicatif puis contenu ; sauvegarde.
+- **P4** ✅ — Historique des parcours (onglet Parcours) + formats flashcards & examen exposés.
 - **P5** — Finitions pro : historique par matière, regénérer, score conservé, états vides, QA multi-niveaux.
 
 ## Journal
@@ -75,3 +75,14 @@ fiche, résumé) et la base `generated_content`.
   PREV retiré (aucun résidu).
 - **Non testable d'ici** : la génération réelle (IA + documents + crédit) et le rendu du résultat →
   à confirmer sur l'iPhone (c'est le moment « bout-en-bout » du parcours).
+
+### P4 ✅ — Historique + formats complets
+- **Onglet Parcours = historique** : liste de tous les parcours générés (plus récent d'abord),
+  rechargée à chaque focus. Chaque ligne : icône par format, titre, sous-titre
+  « format · difficulté · niveau · date » → ouvre `/revision/[id]`. Bouton « Créer » en tête.
+  État vide conservé (CTA « Créer un parcours »). Helper `listUserGeneratedContent(userId)`.
+- **Formats complétés** : le wizard expose désormais les 5 formats — Quiz, Fiche, Résumé,
+  **Cartes mémoire** et **Examen blanc** (déjà gérés par l'IA et le visualiseur).
+- Auto-test web : onglet historique peuplé capturé (3 parcours, badges, date) → conforme, 0 erreur.
+  `tsc` = 0. Patchs de capture (auth web + données démo) retirés, aucun résidu.
+- Reste pour P5 : suppression depuis la liste, regénérer en un geste, filtres par matière, QA device.
