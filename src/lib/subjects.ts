@@ -2,6 +2,8 @@
 // « Voir tous les sujets ». Icône + libellé par sujet, couleur par groupe.
 import type { Ionicons } from '@expo/vector-icons';
 
+import { supabase } from '@/lib/supabase';
+
 export type Subject = { key: string; label: string; icon: keyof typeof Ionicons.glyphMap };
 export type SubjectGroup = { title: string; color: string; items: Subject[] };
 
@@ -108,3 +110,22 @@ export const SUBJECT_GROUPS: SubjectGroup[] = [
 ];
 
 export const ALL_SUBJECTS: Subject[] = SUBJECT_GROUPS.flatMap((g) => g.items);
+
+export function subjectByLabel(label: string): Subject | undefined {
+  return ALL_SUBJECTS.find((x) => x.label === label);
+}
+
+/** Matières choisies par l'utilisateur (profiles.subjects). */
+export async function getUserSubjects(userId: string): Promise<string[]> {
+  const { data, error } = await supabase.from('profiles').select('subjects').eq('id', userId).single();
+  if (error) return [];
+  return ((data as any)?.subjects ?? []) as string[];
+}
+
+export async function saveUserSubjects(userId: string, labels: string[]): Promise<void> {
+  const { error } = await supabase
+    .from('profiles')
+    .update({ subjects: labels, updated_at: new Date().toISOString() })
+    .eq('id', userId);
+  if (error) throw error;
+}

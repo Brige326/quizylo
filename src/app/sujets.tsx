@@ -1,12 +1,13 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Text } from '@/components/ui/Text';
 import { Palette, Radius, Spacing } from '@/constants/theme';
-import { SUBJECT_GROUPS } from '@/lib/subjects';
+import { useAuth } from '@/contexts/auth';
+import { getUserSubjects, saveUserSubjects, SUBJECT_GROUPS } from '@/lib/subjects';
 import { comingSoon } from '@/lib/ui';
 
 const norm = (v: string) =>
@@ -18,8 +19,23 @@ const norm = (v: string) =>
 export default function SujetsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { session } = useAuth();
+  const userId = session?.user?.id;
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [saving, setSaving] = useState(false);
+
+  // Présélection : matières déjà choisies par l'utilisateur.
+  useEffect(() => {
+    if (!userId) return;
+    let alive = true;
+    getUserSubjects(userId).then((labels) => {
+      if (alive && labels.length) setSelected(new Set(labels));
+    });
+    return () => {
+      alive = false;
+    };
+  }, [userId]);
 
   const q = norm(query.trim());
   const groups = useMemo(
@@ -41,9 +57,18 @@ export default function SujetsScreen() {
 
   const count = selected.size;
 
-  const validate = () => {
-    if (count === 0) return;
-    // La sélection sera mémorisée et renverra au chat en S3.
+  const validate = async () => {
+    if (count === 0 || saving) return;
+    if (userId) {
+      setSaving(true);
+      try {
+        await saveUserSubjects(userId, [...selected]);
+      } catch {
+        // on continue quand même : l'utilisateur revient au chat
+      } finally {
+        setSaving(false);
+      }
+    }
     router.back();
   };
 
@@ -90,11 +115,11 @@ export default function SujetsScreen() {
             </Text>
             <View style={styles.chips}>
               {g.items.map((it) => {
-                const on = selected.has(it.key);
+                const on = selected.has(it.label);
                 return (
                   <Pressable
                     key={it.key}
-                    onPress={() => toggle(it.key)}
+                    onPress={() => toggle(it.label)}
                     style={[styles.chip, on && { backgroundColor: g.color, borderColor: g.color }]}
                     accessibilityLabel={it.label}>
                     <Ionicons
@@ -131,10 +156,10 @@ export default function SujetsScreen() {
       <View style={[styles.footer, { paddingBottom: insets.bottom + Spacing.sm }]}>
         <Pressable
           onPress={validate}
-          disabled={count === 0}
+          disabled={count === 0 || saving}
           style={[styles.cta, count === 0 && styles.ctaDisabled]}>
           <Text variant="bodyStrong" color={count === 0 ? Palette.textMuted : Palette.onPrimary}>
-            {count === 0 ? 'Choisis-en au moins 1' : `Continuer (${count})`}
+            {count === 0 ? 'Choisis-en au moins 1' : saving ? 'Enregistrement…' : `Continuer (${count})`}
           </Text>
         </Pressable>
       </View>

@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { type ComponentRef, useCallback, useEffect, useRef, useState } from 'react';
 import {
   Alert,
@@ -26,6 +26,7 @@ import { useAuth } from '@/contexts/auth';
 import { comingSoon } from '@/lib/ui';
 import { getTabBarHeight, subscribeTabBarHeight } from '@/lib/layoutStore';
 import { setCachedConversations, subscribeChatNav } from '@/lib/chatNav';
+import { getUserSubjects, subjectByLabel } from '@/lib/subjects';
 import { supabase } from '@/lib/supabase';
 import { useI18n } from '@/lib/i18n';
 
@@ -68,6 +69,21 @@ export default function AccueilScreen() {
   const [sending, setSending] = useState(false);
   const [focused, setFocused] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
+  const [savedSubjects, setSavedSubjects] = useState<string[]>([]);
+
+  // Recharge les matières choisies à chaque retour sur l'accueil (ex. après /sujets).
+  useFocusEffect(
+    useCallback(() => {
+      if (!userId) return;
+      let active = true;
+      getUserSubjects(userId).then((l) => {
+        if (active) setSavedSubjects(l);
+      });
+      return () => {
+        active = false;
+      };
+    }, [userId]),
+  );
 
   const inputRef = useRef<ComponentRef<typeof TextInput>>(null);
   const listRef = useRef<FlatList<ChatMessage>>(null);
@@ -109,6 +125,23 @@ export default function AccueilScreen() {
 
   const hasChat = messages.length > 0;
   const hasText = input.trim().length > 0;
+
+  // Puces de matières : celles choisies par l'utilisateur, sinon la sélection par défaut.
+  const quickChips: Chip[] = savedSubjects.length
+    ? savedSubjects.slice(0, 6).map((label) => ({
+        key: label,
+        label,
+        icon: subjectByLabel(label)?.icon ?? 'book',
+        color: Palette.primary,
+      }))
+    : QUICK_SUBJECTS;
+
+  // Taper une matière démarre un chat sur ce sujet (réponse dès que l'IA est branchée).
+  const startSubject = (label: string) => {
+    setInput(`Explique-moi les bases en ${label}`);
+    setFocused(true);
+    setTimeout(() => inputRef.current?.focus(), 50);
+  };
 
   // Fondu discret du texte du hero au focus — la mascotte, elle, ne bouge jamais (bloc toujours monté).
   useEffect(() => {
@@ -307,11 +340,11 @@ export default function AccueilScreen() {
               style={[styles.subjectZone, { opacity: heroOpacity }]}
               pointerEvents={focused ? 'none' : 'auto'}>
               <View style={styles.subjectChips}>
-                {QUICK_SUBJECTS.map((s) => (
+                {quickChips.map((s) => (
                   <Tappable
                     key={s.key}
                     style={styles.subjectChip}
-                    onPress={() => comingSoon(s.label)}>
+                    onPress={() => startSubject(s.label)}>
                     <Ionicons name={s.icon} size={15} color={s.color} />
                     <Text variant="small">{s.label}</Text>
                   </Tappable>

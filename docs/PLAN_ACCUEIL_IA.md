@@ -56,7 +56,13 @@ adaptée à Quizylo (mascotte et branding à nous, pas ceux de la référence).
     « Choisis-en au moins 1 » → « Continuer (N) ». Lien « Voir tous les sujets » de
     l'accueil câblé. Auto-test web : écran rendu + 2 sélections + compteur (capture),
     0 erreur. `tsc` = 0, export web OK. (Mémorisation + routage chat = S3.)
-  - **S3** : sélection d'un sujet → chat ; mémorisation des sujets choisis.
+  - **S3** ✅ : mémorisation + chat. Migration `profiles.subjects text[]` ;
+    `getUserSubjects`/`saveUserSubjects`. `/sujets` présélectionne les sujets déjà
+    choisis et les enregistre à « Continuer » → retour au chat. L'accueil affiche les
+    **matières choisies** comme puces (sinon la sélection par défaut), rechargées au
+    focus ; taper une puce **pré-remplit le chat** (« Explique-moi les bases en … »)
+    et donne le focus (réponse dès que l'IA est branchée). RLS vérifiée. `tsc` = 0,
+    export web OK.
 - **Phase C — Outils**
   - **S4** : écran « Outils » (mêmes sections/boutons).
 - **Phase D — IA**
