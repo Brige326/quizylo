@@ -395,7 +395,7 @@ export default function AccueilScreen() {
         <View style={[styles.inputRow, { paddingBottom: focused ? Spacing.sm : Spacing.md }]}>
           <Tappable
             style={styles.plus}
-            onPress={() => comingSoon('Pièce jointe')}
+            onPress={() => router.push('/outils')}
             scaleTo={0.9}
             accessibilityLabel="Ajouter">
             <Ionicons name="add" size={24} color={Palette.text} />

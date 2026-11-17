@@ -76,6 +76,7 @@ function RootNavigator() {
       <Stack.Screen name="privacy" options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="support" options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="about" options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="outils" options={{ animation: 'slide_from_bottom', presentation: 'modal' }} />
     </Stack>
   );
 }

@@ -64,7 +64,15 @@ adaptée à Quizylo (mascotte et branding à nous, pas ceux de la référence).
     et donne le focus (réponse dès que l'IA est branchée). RLS vérifiée. `tsc` = 0,
     export web OK.
 - **Phase C — Outils**
-  - **S4** : écran « Outils » (mêmes sections/boutons).
+  - **S4** ✅ : écran `/outils` (modale depuis le bas), ouvert par le « + » de la
+    barre d'écriture. Mêmes sections/boutons que la maquette : **Importer**
+    (Caméra/Photos/Fichiers/YouTube, tuiles), **Mode de réponse**
+    (Coache-moi/Résoudre/On se concentre, tuiles), **Entraîne-toi pour contrôles &
+    exams** (Quiz-moi, Cartes mémoire, Vocabulaire, Examen blanc, Plan de révision,
+    en lignes) et **Prépare tes cours** (Explique, Fiches de révision, Dissertation,
+    Résumer, Créer une image, Aide-mémoire, en lignes). Chaque bouton = `comingSoon`
+    honnête en attendant le branchement IA (S5/S6). Auto-test web : rendu conforme
+    (2 captures), 0 erreur console. `tsc` = 0, export web OK.
 - **Phase D — IA**
   - **S5** : chat IA réel via Edge Function Supabase (clé jamais exposée).
   - **S6** : outils actifs (Quiz, Résumé, Cartes…) = prompts vers l'IA.
