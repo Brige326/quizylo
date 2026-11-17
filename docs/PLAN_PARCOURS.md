@@ -19,7 +19,7 @@ fiche, résumé) et la base `generated_content`.
 ## Séances
 - **P1** ✅ — Fondations IA (multimodale) + données.
 - **P2** ✅ — Assistant écrans 1 & 2 : matière, puis ajout/import des documents (+ récap).
-- **P3** — Assistant écrans 3 & 4 : format + difficulté + niveau, bouton Générer.
+- **P3** ✅ — Assistant écrans 3 & 4 : format + difficulté + niveau, Générer (réel).
 - **P4** — Génération + résultat : chargement soigné → résumé explicatif puis contenu ; sauvegarde.
 - **P5** — Finitions pro : historique par matière, regénérer, score conservé, états vides, QA multi-niveaux.
 
@@ -59,3 +59,19 @@ fiche, résumé) et la base `generated_content`.
   `tsc` = 0. Bloc de démo (PREV) retiré avant commit (vérifié, aucun résidu).
 - Non couvert ici : le « Continuer » ouvre un `comingSoon` (format/difficulté/niveau = P3) ; l'import
   réel (caméra/fichiers) et l'upload se valident sur l'iPhone.
+
+### P3 ✅ — Écrans 3 & 4 + génération réelle
+- **Étape 3 (format)** : cartes Quiz / Fiche de révision / Résumé (icône + description).
+- **Étape 4 (difficulté & niveau)** : segments Facile/Moyen/Difficile et Collège/Lycée/Supérieur,
+  bouton « Générer mon support ».
+- **Générer** : appelle `generateFromDocuments` (IA multimodale), overlay « Génération en cours… »,
+  puis `saveGeneratedContent` (avec difficulté/niveau/résumé) et ouverture du visualiseur
+  `/revision/[id]`. Garde-fous honnêtes : `configured:false` → message « IA non configurée » ;
+  codes d'erreur → messages clairs (`friendlyError`) ; jamais de faux contenu.
+- **Visualiseur enrichi** (`revision/[id]`) : pour un **quiz**, le **résumé explicatif** s'affiche
+  d'abord (« Le point sur le cours » + bouton « Commencer le quiz ») ; pour une **fiche**, le résumé
+  sert d'intro. Le quiz interactif (réponse → correction → explication → score) est réutilisé tel quel.
+- Auto-test web : écrans 3 & 4 capturés (format, segments, bouton) → conformes, 0 erreur. `tsc` = 0.
+  PREV retiré (aucun résidu).
+- **Non testable d'ici** : la génération réelle (IA + documents + crédit) et le rendu du résultat →
+  à confirmer sur l'iPhone (c'est le moment « bout-en-bout » du parcours).

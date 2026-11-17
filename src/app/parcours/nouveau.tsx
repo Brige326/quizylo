@@ -19,15 +19,53 @@ import { Text } from '@/components/ui/Text';
 import { Palette, Radius, Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth';
 import {
+  generateFromDocuments,
   listSubjectDocuments,
   listSubjects,
+  saveGeneratedContent,
   uploadParcoursDocument,
+  type Difficulty,
   type DocItem,
+  type GenKind,
+  type Level,
   type Subject,
 } from '@/lib/courses';
-import { comingSoon } from '@/lib/ui';
 
 type DocKind = 'image' | 'pdf';
+
+type Format = { key: GenKind; label: string; icon: keyof typeof Ionicons.glyphMap; color: string; desc: string };
+const FORMATS: Format[] = [
+  { key: 'quiz', label: 'Quiz', icon: 'help-circle', color: '#5B8CFF', desc: 'Des questions à choix multiples, corrigées et expliquées.' },
+  { key: 'fiche', label: 'Fiche de révision', icon: 'document-text', color: '#22E07B', desc: 'Les points clés organisés en sections claires.' },
+  { key: 'resume', label: 'Résumé', icon: 'reader', color: '#A855F7', desc: 'Une synthèse fidèle de tes documents.' },
+];
+
+const DIFFICULTIES: { key: Difficulty; label: string }[] = [
+  { key: 'facile', label: 'Facile' },
+  { key: 'moyen', label: 'Moyen' },
+  { key: 'difficile', label: 'Difficile' },
+];
+
+const LEVELS: { key: Level; label: string }[] = [
+  { key: 'college', label: 'Collège' },
+  { key: 'lycee', label: 'Lycée' },
+  { key: 'superieur', label: 'Supérieur' },
+];
+
+function friendlyError(code?: string): string {
+  switch (code) {
+    case 'no_source':
+      return 'Aucun document exploitable. Ajoute une image ou un PDF.';
+    case 'bad_key':
+      return "La clé de l'IA semble invalide. Vérifie la configuration.";
+    case 'rate_limited':
+      return 'Trop de demandes d’un coup. Patiente quelques secondes et réessaie.';
+    case 'parse_failed':
+      return "L'IA a renvoyé un format inattendu. Réessaie.";
+    default:
+      return "La génération a échoué. Réessaie dans un instant.";
+  }
+}
 type SelectedDoc = {
   key: string;
   name: string;
@@ -64,7 +102,7 @@ export default function NouveauParcoursScreen() {
   const { session } = useAuth();
   const userId = session?.user?.id;
 
-  const [step, setStep] = useState<1 | 2>(1);
+  const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [loadingSubjects, setLoadingSubjects] = useState(true);
 
@@ -73,6 +111,11 @@ export default function NouveauParcoursScreen() {
   const [loadingDocs, setLoadingDocs] = useState(false);
   const [selected, setSelected] = useState<SelectedDoc[]>([]);
   const [busy, setBusy] = useState(false);
+
+  const [kind, setKind] = useState<GenKind | null>(null);
+  const [difficulty, setDifficulty] = useState<Difficulty>('moyen');
+  const [level, setLevel] = useState<Level>('lycee');
+  const [generating, setGenerating] = useState(false);
 
   const loadSubjects = useCallback(async () => {
     if (!userId) {
@@ -232,20 +275,56 @@ export default function NouveauParcoursScreen() {
 
   const isPicked = (path: string | null) => !!path && selected.some((s) => s.storage_path === path);
 
-  const goNext = () => {
-    // Étapes 3 & 4 (format + difficulté + niveau) : prochaine séance (P3).
-    comingSoon('Choix du format, de la difficulté et du niveau');
+  const goNext = () => setStep(3);
+
+  const back = () => {
+    if (step > 1) setStep((step - 1) as 1 | 2 | 3);
+    else router.back();
+  };
+
+  const generate = async () => {
+    if (!userId || !subject || !kind || selected.length === 0 || generating) return;
+    setGenerating(true);
+    try {
+      const res = await generateFromDocuments({
+        kind,
+        difficulty,
+        level,
+        subjectLabel: subject.name,
+        attachments: selected.map((s) => ({ storage_path: s.storage_path, mime: s.mime, name: s.name })),
+      });
+      if (!res.configured) {
+        Alert.alert('IA non configurée', "L'assistant IA n'est pas encore activé sur ce projet.");
+        return;
+      }
+      if (res.error || !res.payload) {
+        Alert.alert('Génération', friendlyError(res.error));
+        return;
+      }
+      const title = `${subject.name} · ${res.title ?? FORMATS.find((f) => f.key === kind)?.label ?? 'Révision'}`;
+      const item = await saveGeneratedContent({
+        userId,
+        subjectId: subject.id,
+        kind,
+        title,
+        payload: res.payload,
+        difficulty,
+        level,
+        summary: res.summary ?? null,
+      });
+      router.replace(`/revision/${item.id}`);
+    } catch {
+      Alert.alert('Génération', "La génération a échoué. Vérifie ta connexion et réessaie.");
+    } finally {
+      setGenerating(false);
+    }
   };
 
   return (
     <View style={[styles.root, { paddingTop: insets.top + Spacing.xs }]}>
       {/* En-tête + progression */}
       <View style={styles.header}>
-        <Pressable
-          onPress={() => (step === 2 ? setStep(1) : router.back())}
-          hitSlop={12}
-          style={styles.iconBtn}
-          accessibilityLabel="Retour">
+        <Pressable onPress={back} hitSlop={12} style={styles.iconBtn} accessibilityLabel="Retour">
           <Ionicons name="chevron-back" size={22} color={Palette.text} />
         </Pressable>
         <Text variant="bodyStrong">Nouveau parcours</Text>
@@ -309,7 +388,7 @@ export default function NouveauParcoursScreen() {
             </View>
           )}
         </ScrollView>
-      ) : (
+      ) : step === 2 ? (
         <>
           <ScrollView
             contentContainerStyle={[styles.body, { paddingBottom: 120 }]}
@@ -422,7 +501,119 @@ export default function NouveauParcoursScreen() {
             </Pressable>
           </View>
         </>
+      ) : step === 3 ? (
+        <ScrollView
+          contentContainerStyle={[styles.body, { paddingBottom: insets.bottom + Spacing.xl }]}
+          showsVerticalScrollIndicator={false}>
+          <Text variant="title" style={styles.h1}>
+            Choisis le format
+          </Text>
+          <Text variant="body" color={Palette.textSecondary} style={styles.sub}>
+            Que veux-tu générer à partir de tes documents ?
+          </Text>
+          <View style={{ gap: Spacing.sm }}>
+            {FORMATS.map((f) => (
+              <Pressable
+                key={f.key}
+                onPress={() => {
+                  setKind(f.key);
+                  setStep(4);
+                }}
+                style={({ pressed }) => [styles.formatCard, pressed && styles.pressed]}
+                accessibilityLabel={f.label}>
+                <View style={[styles.formatIcon, { backgroundColor: f.color + '22' }]}>
+                  <Ionicons name={f.icon} size={22} color={f.color} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text variant="bodyStrong" color={Palette.text}>
+                    {f.label}
+                  </Text>
+                  <Text variant="caption" color={Palette.textMuted}>
+                    {f.desc}
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color={Palette.textMuted} />
+              </Pressable>
+            ))}
+          </View>
+        </ScrollView>
+      ) : (
+        <>
+          <ScrollView
+            contentContainerStyle={[styles.body, { paddingBottom: 120 }]}
+            showsVerticalScrollIndicator={false}>
+            <Text variant="title" style={styles.h1}>
+              Difficulté & niveau
+            </Text>
+            <Text variant="body" color={Palette.textSecondary} style={styles.sub}>
+              {FORMATS.find((f) => f.key === kind)?.label} · le contenu s'adapte à ton niveau.
+            </Text>
+
+            <Text variant="bodyStrong" color={Palette.textSecondary} style={styles.sectionTitle}>
+              Difficulté
+            </Text>
+            <View style={styles.segment}>
+              {DIFFICULTIES.map((d) => {
+                const on = difficulty === d.key;
+                return (
+                  <Pressable
+                    key={d.key}
+                    onPress={() => setDifficulty(d.key)}
+                    style={[styles.segItem, on && styles.segOn]}
+                    accessibilityLabel={d.label}>
+                    <Text variant="bodyStrong" color={on ? Palette.onPrimary : Palette.textSecondary}>
+                      {d.label}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+
+            <Text variant="bodyStrong" color={Palette.textSecondary} style={styles.sectionTitle}>
+              Niveau
+            </Text>
+            <View style={styles.segment}>
+              {LEVELS.map((l) => {
+                const on = level === l.key;
+                return (
+                  <Pressable
+                    key={l.key}
+                    onPress={() => setLevel(l.key)}
+                    style={[styles.segItem, on && styles.segOn]}
+                    accessibilityLabel={l.label}>
+                    <Text variant="bodyStrong" color={on ? Palette.onPrimary : Palette.textSecondary}>
+                      {l.label}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </ScrollView>
+
+          <View style={[styles.footer, { paddingBottom: insets.bottom + Spacing.md }]}>
+            <Pressable
+              onPress={generate}
+              disabled={generating}
+              style={({ pressed }) => [styles.cta, pressed && styles.pressed]}>
+              <Text variant="bodyStrong" color={Palette.onPrimary}>
+                Générer mon support
+              </Text>
+            </Pressable>
+          </View>
+        </>
       )}
+
+      {generating ? (
+        <View style={styles.overlay}>
+          <ActivityIndicator color={Palette.primary} size="large" />
+          <Text variant="bodyStrong" color={Palette.text} center style={{ marginTop: Spacing.md }}>
+            Génération en cours…
+          </Text>
+          <Text variant="caption" color={Palette.textMuted} center style={{ marginTop: 4 }}>
+            L'IA lit tes documents et prépare ton support.
+          </Text>
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -517,4 +708,43 @@ const styles = StyleSheet.create({
   },
   ctaOff: { backgroundColor: Palette.surface },
   pressed: { opacity: 0.6 },
+  formatCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+    backgroundColor: Palette.surface,
+    borderRadius: Radius.md,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.md,
+  },
+  formatIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: Radius.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  segment: {
+    flexDirection: 'row',
+    gap: Spacing.sm,
+  },
+  segItem: {
+    flex: 1,
+    backgroundColor: Palette.surface,
+    borderRadius: Radius.md,
+    paddingVertical: Spacing.md,
+    alignItems: 'center',
+  },
+  segOn: { backgroundColor: Palette.primary },
+  overlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: Palette.background + 'F2',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: Spacing.xl,
+  },
 });

@@ -86,11 +86,11 @@ export default function RevisionViewerScreen() {
           </Text>
         </View>
       ) : item.kind === 'quiz' || item.kind === 'examen' ? (
-        <QuizPlayer payload={item.payload} />
+        <QuizPlayer payload={item.payload} summary={item.summary} />
       ) : item.kind === 'flashcards' ? (
         <Flashcards payload={item.payload} />
       ) : item.kind === 'fiche' ? (
-        <Fiche payload={item.payload} />
+        <Fiche payload={item.payload} summary={item.summary} />
       ) : (
         <ResumeView payload={item.payload} />
       )}
@@ -100,7 +100,7 @@ export default function RevisionViewerScreen() {
 
 /* ---------- Quiz / Examen ---------- */
 
-function QuizPlayer({ payload }: { payload: GenItem['payload'] }) {
+function QuizPlayer({ payload, summary }: { payload: GenItem['payload']; summary: string | null }) {
   const questions = ((payload as { questions?: QuizQuestion[] }).questions ?? []).filter(
     (q) => q && Array.isArray(q.choices) && q.choices.length > 0,
   );
@@ -108,6 +108,7 @@ function QuizPlayer({ payload }: { payload: GenItem['payload'] }) {
   const [picked, setPicked] = useState<number | null>(null);
   const [score, setScore] = useState(0);
   const [done, setDone] = useState(false);
+  const [started, setStarted] = useState(!summary);
 
   if (questions.length === 0) {
     return (
@@ -116,6 +117,25 @@ function QuizPlayer({ payload }: { payload: GenItem['payload'] }) {
           Ce quiz n'a pas pu être lu correctement.
         </Text>
       </View>
+    );
+  }
+
+  if (summary && !started) {
+    return (
+      <ScrollView contentContainerStyle={styles.quizBody} showsVerticalScrollIndicator={false}>
+        <Text variant="small" color={Palette.textMuted}>
+          À lire avant de commencer
+        </Text>
+        <Text variant="title" style={{ marginVertical: Spacing.md }}>
+          Le point sur le cours
+        </Text>
+        <Text variant="body" color={Palette.textSecondary} style={{ lineHeight: 24 }}>
+          {summary}
+        </Text>
+        <View style={{ marginTop: Spacing.xl }}>
+          <Button label="Commencer le quiz" onPress={() => setStarted(true)} />
+        </View>
+      </ScrollView>
     );
   }
 
@@ -275,7 +295,7 @@ function Flashcards({ payload }: { payload: GenItem['payload'] }) {
 
 /* ---------- Fiche ---------- */
 
-function Fiche({ payload }: { payload: GenItem['payload'] }) {
+function Fiche({ payload, summary }: { payload: GenItem['payload']; summary: string | null }) {
   const sections = (payload as { sections?: { heading: string; points: string[] }[] }).sections ?? [];
   if (sections.length === 0) {
     return (
@@ -288,6 +308,13 @@ function Fiche({ payload }: { payload: GenItem['payload'] }) {
   }
   return (
     <ScrollView contentContainerStyle={styles.textBody} showsVerticalScrollIndicator={false}>
+      {summary ? (
+        <View style={styles.leadCard}>
+          <Text variant="body" color={Palette.textSecondary} style={{ lineHeight: 22 }}>
+            {summary}
+          </Text>
+        </View>
+      ) : null}
       {sections.map((s, i) => (
         <View key={i} style={{ marginBottom: Spacing.lg }}>
           <Text variant="heading" style={{ marginBottom: Spacing.sm }}>
@@ -367,6 +394,12 @@ const styles = StyleSheet.create({
   },
   navBtnOff: { opacity: 0.35 },
   textBody: { padding: Spacing.lg, paddingBottom: Spacing.xl },
+  leadCard: {
+    backgroundColor: Palette.surface,
+    borderRadius: Radius.md,
+    padding: Spacing.md,
+    marginBottom: Spacing.lg,
+  },
   bulletRow: { flexDirection: 'row', gap: Spacing.sm, marginBottom: Spacing.sm, alignItems: 'flex-start' },
   bullet: { width: 6, height: 6, borderRadius: 3, backgroundColor: Palette.primary, marginTop: 8 },
 });
