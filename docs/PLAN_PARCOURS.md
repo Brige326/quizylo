@@ -1,0 +1,46 @@
+# Espace « Parcours » — Transforme tes fichiers en savoir
+
+Parcours de révision guidé : l'élève choisit une **matière**, importe ses **documents**
+(photos, images, PDF), choisit un **format** (quiz / fiche / résumé), une **difficulté** et un
+**niveau**, et l'IA (Claude Haiku 5.5, **multimodale**) lit les vrais documents pour produire un
+**résumé explicatif** puis le contenu. Pour tous : du collège au doctorat.
+
+Vit dans l'onglet **Parcours** (`src/app/(tabs)/parcours.tsx`, aujourd'hui vide). Réutilise le
+visualiseur existant `src/app/revision/[id].tsx` (quiz interactif + correction + score, flashcards,
+fiche, résumé) et la base `generated_content`.
+
+## Le parcours (4 étapes)
+1. Choisir la **matière** (matières de « Mes cours » + personnalisées).
+2. **Ajouter les documents** : importer (caméra/photos/fichiers) et/ou reprendre ceux de « Mes cours ».
+3. Choisir le **format** : Quiz · Fiche de révision · Résumé.
+4. Choisir **difficulté** (Facile/Moyen/Difficile) + **niveau** (Collège/Lycée/Supérieur).
+→ **Générer** : résumé explicatif d'abord, puis quiz corrigé (ou fiche/résumé). Sauvegardé, revisitable.
+
+## Séances
+- **P1** ✅ — Fondations IA (multimodale) + données.
+- **P2** — Assistant écrans 1 & 2 : matière, puis ajout/import des documents (+ récap).
+- **P3** — Assistant écrans 3 & 4 : format + difficulté + niveau, bouton Générer.
+- **P4** — Génération + résultat : chargement soigné → résumé explicatif puis contenu ; sauvegarde.
+- **P5** — Finitions pro : historique par matière, regénérer, score conservé, états vides, QA multi-niveaux.
+
+## Journal
+
+### P1 ✅ — Fondations IA multimodale + données
+- **Base** : migration `generated_content_parcours_fields` → colonnes `difficulty`, `level`,
+  `summary` (toutes nullable) ajoutées à `generated_content`. Appliquée par Claude. Vérifiée.
+- **Edge Function `generate-content` v4 (multimodale)** : lit les documents de l'élève depuis le
+  bucket privé `documents` (service role), construit des blocs Claude (`image` base64 pour
+  JPEG/PNG/GIF/WebP, `document` base64 pour PDF), formats non supportés (HEIC…) ignorés proprement.
+  Accepte `{ kind, difficulty, level, subjectLabel, attachments[], context?, title? }`. Prompts
+  adaptés à la difficulté **et** au niveau (collège → doctorat). Renvoie
+  `{ configured, kind, difficulty, level, title, summary, payload, meta }`. Garde-fous : clé absente
+  → `configured:false` ; aucune source → `error:no_source` ; erreurs HTTP → codes clairs
+  (`bad_key`, `rate_limited`, `bad_request`…). Modèle unique `claude-haiku-5-5`. Limites : 20 fichiers,
+  ~24 Mo/requête. Déployée (v4).
+- **Contrat app (`src/lib/courses.ts`)** : types `Difficulty`, `Level` ; `GenItem` et `GenerateResult`
+  étendus (difficulty/level/summary) ; nouvelle fonction `generateFromDocuments(...)` ;
+  `saveGeneratedContent` accepte difficulty/level/summary et `chapterId` optionnel. L'ancienne
+  `generateContent(kind, context)` reste valable (rétrocompat).
+- **Vérifs** : migration OK ; esbuild (fonction) OK ; `tsc` app = 0.
+- **Non testable d'ici** : l'appel multimodal réel (mon environnement ne joint pas `supabase.co`) →
+  se confirmera en P4 sur l'iPhone, quand le parcours déclenchera la génération. Aucune UI modifiée en P1.

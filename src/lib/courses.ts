@@ -600,6 +600,8 @@ export async function searchCourses(userId: string, query: string): Promise<Cour
 /* ---------- Contenus générés par IA (MC-4) ---------- */
 
 export type GenKind = 'quiz' | 'fiche' | 'flashcards' | 'resume' | 'examen';
+export type Difficulty = 'facile' | 'moyen' | 'difficile';
+export type Level = 'college' | 'lycee' | 'superieur';
 
 export type QuizQuestion = { q: string; choices: string[]; answer: number; explanation?: string };
 export type GenPayload =
@@ -618,6 +620,9 @@ export type GenItem = {
   kind: GenKind;
   title: string;
   payload: GenPayload;
+  difficulty: Difficulty | null;
+  level: Level | null;
+  summary: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -627,6 +632,10 @@ export type GenerateResult = {
   kind?: GenKind;
   title?: string;
   payload?: GenPayload;
+  difficulty?: Difficulty;
+  level?: Level;
+  summary?: string | null;
+  meta?: { files: number; skipped: number };
   error?: string;
 };
 
@@ -643,25 +652,60 @@ export async function generateContent(
   return data as GenerateResult;
 }
 
+/**
+ * Génération « parcours » : l'IA lit directement les documents importés (images + PDF),
+ * avec la matière, le format, la difficulté et le niveau. Renvoie un résumé explicatif
+ * + le contenu. configured:false si aucune clé IA n'est en place.
+ */
+export async function generateFromDocuments(params: {
+  kind: GenKind;
+  difficulty: Difficulty;
+  level: Level;
+  subjectLabel?: string;
+  attachments: { storage_path: string; mime: string | null; name: string }[];
+  context?: string;
+  title?: string;
+}): Promise<GenerateResult> {
+  const { data, error } = await supabase.functions.invoke('generate-content', {
+    body: {
+      kind: params.kind,
+      difficulty: params.difficulty,
+      level: params.level,
+      subjectLabel: params.subjectLabel,
+      attachments: params.attachments,
+      context: params.context,
+      title: params.title,
+    },
+  });
+  if (error) throw error;
+  return data as GenerateResult;
+}
+
 export async function saveGeneratedContent(params: {
   userId: string;
   subjectId: string;
-  chapterId: string;
+  chapterId?: string | null;
   sourceDocumentId?: string | null;
   kind: GenKind;
   title: string;
   payload: GenPayload;
+  difficulty?: Difficulty | null;
+  level?: Level | null;
+  summary?: string | null;
 }): Promise<GenItem> {
   const { data, error } = await supabase
     .from('generated_content')
     .insert({
       user_id: params.userId,
       subject_id: params.subjectId,
-      chapter_id: params.chapterId,
+      chapter_id: params.chapterId ?? null,
       source_document_id: params.sourceDocumentId ?? null,
       kind: params.kind,
       title: params.title,
       payload: params.payload,
+      difficulty: params.difficulty ?? null,
+      level: params.level ?? null,
+      summary: params.summary ?? null,
     })
     .select('*')
     .single();
