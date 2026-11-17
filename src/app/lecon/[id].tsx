@@ -127,8 +127,10 @@ export default function LeconScreen() {
   const [busy, setBusy] = useState(false);
   const [gallery, setGallery] = useState<{ index: number } | null>(null);
   const [pdfViewer, setPdfViewer] = useState<{ url: string; name: string } | null>(null);
+  const [view, setView] = useState<'list' | 'grid'>('list');
 
   const imageItems = items.filter((i) => i.kind === 'image');
+  const tileW = (screenW - Spacing.lg * 2 - Spacing.md) / 2;
 
   const noteRef = useRef('');
   const titleRef = useRef(title);
@@ -437,11 +439,37 @@ export default function LeconScreen() {
 
           {/* Ressources */}
           <View style={styles.resHeader}>
-            <Text variant="heading">Ressources</Text>
+            <View style={styles.resHeaderLeft}>
+              <Text variant="heading">Ressources</Text>
+              {items.length > 0 ? (
+                <Text variant="small" color={Palette.textSecondary}>
+                  {items.length}
+                </Text>
+              ) : null}
+            </View>
             {items.length > 0 ? (
-              <Text variant="small" color={Palette.textSecondary}>
-                {items.length}
-              </Text>
+              <View style={styles.viewToggle}>
+                <Pressable
+                  onPress={() => setView('list')}
+                  style={[styles.viewBtn, view === 'list' && styles.viewBtnActive]}
+                  accessibilityLabel="Vue liste">
+                  <Ionicons
+                    name="list"
+                    size={18}
+                    color={view === 'list' ? Palette.onPrimary : Palette.textSecondary}
+                  />
+                </Pressable>
+                <Pressable
+                  onPress={() => setView('grid')}
+                  style={[styles.viewBtn, view === 'grid' && styles.viewBtnActive]}
+                  accessibilityLabel="Vue grille">
+                  <Ionicons
+                    name="grid"
+                    size={16}
+                    color={view === 'grid' ? Palette.onPrimary : Palette.textSecondary}
+                  />
+                </Pressable>
+              </View>
             ) : null}
           </View>
 
@@ -458,6 +486,36 @@ export default function LeconScreen() {
                 </Text>
               </Pressable>
             </EmptyState>
+          ) : view === 'grid' ? (
+            <View style={styles.gridWrap}>
+              {items.map((it) => {
+                const thumb = it.kind === 'image' ? urls[it.storage_path] : undefined;
+                const meta = docMeta(it);
+                return (
+                  <Pressable
+                    key={it.id}
+                    onPress={() => open(it)}
+                    onLongPress={() => itemMenu(it)}
+                    style={[styles.tile, { width: tileW }]}>
+                    <View style={[styles.tileThumb, !thumb && { backgroundColor: meta.color + '22' }]}>
+                      {thumb ? (
+                        <Image source={{ uri: thumb }} style={styles.tileImg} resizeMode="cover" />
+                      ) : (
+                        <Ionicons name={meta.icon} size={34} color={meta.color} />
+                      )}
+                      {it.favorite ? (
+                        <View style={styles.tileStar}>
+                          <Ionicons name="star" size={13} color={Palette.gold} />
+                        </View>
+                      ) : null}
+                    </View>
+                    <Text variant="small" numberOfLines={2} style={styles.tileName}>
+                      {it.name ?? 'Sans nom'}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
           ) : (
             items.map((it) => {
               const thumb = it.kind === 'image' ? urls[it.storage_path] : undefined;
@@ -596,6 +654,41 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: Spacing.md,
   },
+  resHeaderLeft: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
+  viewToggle: {
+    flexDirection: 'row',
+    backgroundColor: Palette.surface,
+    borderRadius: Radius.md,
+    padding: 3,
+    gap: 3,
+  },
+  viewBtn: { width: 34, height: 28, borderRadius: Radius.sm, alignItems: 'center', justifyContent: 'center' },
+  viewBtnActive: { backgroundColor: Palette.primary },
+  gridWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.md },
+  tile: { marginBottom: Spacing.xs },
+  tileThumb: {
+    width: '100%',
+    aspectRatio: 1,
+    borderRadius: Radius.lg,
+    backgroundColor: Palette.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+    marginBottom: Spacing.xs,
+  },
+  tileImg: { width: '100%', height: '100%' },
+  tileStar: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tileName: { paddingHorizontal: 2 },
   addBtn: {
     flexDirection: 'row',
     alignItems: 'center',

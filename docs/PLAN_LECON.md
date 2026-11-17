@@ -60,7 +60,13 @@ Améliorations retenues :
     **taille du fichier** → reconnaissance immédiate. PDF affiché dans l'app (iOS),
     autres formats ouverts via le système. Auto-test web : 6 types de cartes rendus
     (capture), 0 erreur. `tsc` = 0, export web OK. (Aperçu 1re page PDF = S6.)
-  - **S6** : miniatures/aperçus (1re page PDF) + visionneuse unifiée avec swipe.
+  - **S6** ✅ : aperçus. **Bascule liste/grille** : la grille montre de vraies
+    miniatures d'images + tuiles typées (couleur par type) avec favori en overlay —
+    parcours visuel et pratique. Visionneuse galerie (swipe + zoom) déjà en place.
+    Auto-test web : vue grille rendue (miniatures + tuiles, 0 erreur, capture).
+    `tsc` = 0, export web OK. **Aperçu 1re page PDF reporté** : non réalisable
+    proprement en Expo Go (nécessiterait pdf.js dans une WebView cachée ou un build
+    de dev) — décision à prendre avec l'utilisateur ; PDF = tuile rouge + ouverture.
 - **Phase D — Organisation**
   - **S7** : recherche, filtres, tri, renommer, favori, supprimer, réorganiser.
   - **S8** : finitions UX + nettoyage final des dépendances.
