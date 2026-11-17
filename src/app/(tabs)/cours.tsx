@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -63,16 +63,13 @@ export default function MesCoursScreen() {
     }
   }, [userId]);
 
-  useEffect(() => {
-    load();
-  }, [load]);
+  useFocusEffect(
+    useCallback(() => {
+      load();
+    }, [load]),
+  );
 
-  const openCreate = () => {
-    setEditing(null);
-    setName('');
-    setColor(SUBJECT_COLORS[0]);
-    setModalOpen(true);
-  };
+  const openCreate = () => router.push('/cours/ajouter');
 
   const openEdit = (s: Subject) => {
     setEditing(s);
