@@ -49,7 +49,12 @@ Améliorations retenues :
     suppression. Auto-test visuel web (états avec ressources + vide, 0 erreur,
     captures). `tsc` = 0, export web OK.
 - **Phase C — Import & affichage parfait**
-  - **S4** : images (photo/galerie multi, HEIC→JPEG, miniatures, visionneuse + zoom).
+  - **S4** ✅ : images. Conversion **HEIC→JPEG** à l'import (expo-image-manipulator,
+    borne à 2400px) pour un affichage correct partout ; prise photo + import multi.
+    **Visionneuse galerie** plein écran (ScrollView horizontal paginé = swipe entre
+    images, zoom par pincement via `maximumZoomScale` iOS, bouton fermer). Auto-test
+    web : galerie rendue (image plein écran + fermer, 0 erreur, capture). `tsc` = 0,
+    export web OK.
   - **S5** : documents (PDF affiché parfaitement ; autres formats = carte + ouverture).
   - **S6** : miniatures/aperçus (1re page PDF) + visionneuse unifiée avec swipe.
 - **Phase D — Organisation**

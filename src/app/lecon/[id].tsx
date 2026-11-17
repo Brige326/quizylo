@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
+import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -14,6 +15,7 @@ import {
   ScrollView,
   StyleSheet,
   TextInput,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -61,12 +63,34 @@ function iconFor(kind: LessonAttachmentKind): keyof typeof Ionicons.glyphMap {
   return 'image';
 }
 
+/**
+ * Normalise une image vers JPEG (gère le HEIC de l'iPhone) et borne la taille.
+ * Garantit un affichage correct partout. Renvoie un URI local JPEG.
+ */
+async function normalizeImage(uri: string, width?: number): Promise<string> {
+  try {
+    const ctx = ImageManipulator.manipulate(uri);
+    if (width && width > 2400) ctx.resize({ width: 2400 });
+    const ref = await ctx.renderAsync();
+    const out = await ref.saveAsync({ compress: 0.85, format: SaveFormat.JPEG });
+    return out.uri;
+  } catch {
+    return uri; // à défaut, on garde l'original
+  }
+}
+
+function toJpgName(name?: string | null): string | undefined {
+  if (!name) return undefined;
+  return name.replace(/\.[^.]+$/, '') + '.jpg';
+}
+
 type SaveState = 'idle' | 'saving' | 'saved';
 
 export default function LeconScreen() {
   const { session } = useAuth();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { width: screenW, height: screenH } = useWindowDimensions();
   const params = useLocalSearchParams<{ id: string; name?: string; color?: string }>();
   const lessonId = params.id;
   const color = params.color ?? Palette.primary;
@@ -79,8 +103,10 @@ export default function LeconScreen() {
   const [urls, setUrls] = useState<Record<string, string>>({});
   const [saveState, setSaveState] = useState<SaveState>('saved');
   const [busy, setBusy] = useState(false);
-  const [viewer, setViewer] = useState<string | null>(null);
+  const [gallery, setGallery] = useState<{ index: number } | null>(null);
   const [pdfViewer, setPdfViewer] = useState<{ url: string; name: string } | null>(null);
+
+  const imageItems = items.filter((i) => i.kind === 'image');
 
   const noteRef = useRef('');
   const titleRef = useRef(title);
@@ -209,15 +235,11 @@ export default function LeconScreen() {
       Alert.alert('Appareil photo', "Autorise l'accès à l'appareil photo.");
       return;
     }
-    const res = await ImagePicker.launchCameraAsync({ quality: 0.8 });
+    const res = await ImagePicker.launchCameraAsync({ quality: 1 });
     if (res.canceled) return;
     const a = res.assets[0];
-    await addFrom('image', {
-      uri: a.uri,
-      name: a.fileName ?? undefined,
-      mime: a.mimeType ?? 'image/jpeg',
-      size: a.fileSize,
-    });
+    const uri = await normalizeImage(a.uri, a.width);
+    await addFrom('image', { uri, name: toJpgName(a.fileName) ?? 'photo.jpg', mime: 'image/jpeg' });
   };
 
   const pickImages = async () => {
@@ -227,17 +249,13 @@ export default function LeconScreen() {
       return;
     }
     const res = await ImagePicker.launchImageLibraryAsync({
-      quality: 0.8,
+      quality: 1,
       allowsMultipleSelection: true,
     });
     if (res.canceled) return;
     for (const a of res.assets) {
-      await addFrom('image', {
-        uri: a.uri,
-        name: a.fileName ?? undefined,
-        mime: a.mimeType ?? 'image/jpeg',
-        size: a.fileSize,
-      });
+      const uri = await normalizeImage(a.uri, a.width);
+      await addFrom('image', { uri, name: toJpgName(a.fileName) ?? 'image.jpg', mime: 'image/jpeg' });
     }
   };
 
@@ -270,10 +288,21 @@ export default function LeconScreen() {
   // --- Ouvrir / agir sur une ressource ---
   const open = async (it: LessonAttachment) => {
     try {
+      if (it.kind === 'image') {
+        const missing = imageItems.filter((i) => !urls[i.storage_path]);
+        if (missing.length) {
+          const entries = await Promise.all(
+            missing.map(async (i) => [i.storage_path, await signedUrlFor(i.storage_path)] as const),
+          );
+          setUrls((p) => ({ ...p, ...Object.fromEntries(entries) }));
+        }
+        const index = imageItems.findIndex((i) => i.id === it.id);
+        setGallery({ index: Math.max(0, index) });
+        return;
+      }
       const u = urls[it.storage_path] ?? (await signedUrlFor(it.storage_path));
       setUrls((p) => ({ ...p, [it.storage_path]: u }));
-      if (it.kind === 'image') setViewer(u);
-      else if (it.kind === 'pdf' && Platform.OS === 'ios')
+      if (it.kind === 'pdf' && Platform.OS === 'ios')
         setPdfViewer({ url: u, name: it.name ?? 'Document' });
       else Linking.openURL(u);
     } catch {
@@ -455,13 +484,44 @@ export default function LeconScreen() {
         </ScrollView>
       )}
 
-      {/* Visionneuse image plein écran */}
-      <Modal visible={!!viewer} transparent animationType="fade" onRequestClose={() => setViewer(null)}>
-        <Pressable style={styles.viewerBackdrop} onPress={() => setViewer(null)}>
-          {viewer ? (
-            <Image source={{ uri: viewer }} style={styles.viewerImg} resizeMode="contain" />
-          ) : null}
-        </Pressable>
+      {/* Visionneuse galerie : swipe entre images + zoom (pincement) */}
+      <Modal
+        visible={!!gallery}
+        animationType="fade"
+        onRequestClose={() => setGallery(null)}
+        statusBarTranslucent>
+        <View style={styles.galleryRoot}>
+          <ScrollView
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            contentOffset={{ x: (gallery?.index ?? 0) * screenW, y: 0 }}>
+            {imageItems.map((item) => (
+              <ScrollView
+                key={item.id}
+                style={{ width: screenW, height: screenH }}
+                contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }}
+                maximumZoomScale={4}
+                minimumZoomScale={1}
+                centerContent
+                showsVerticalScrollIndicator={false}
+                showsHorizontalScrollIndicator={false}>
+                <Image
+                  source={{ uri: urls[item.storage_path] }}
+                  style={{ width: screenW, height: screenH }}
+                  resizeMode="contain"
+                />
+              </ScrollView>
+            ))}
+          </ScrollView>
+          <Pressable
+            onPress={() => setGallery(null)}
+            style={[styles.galleryClose, { top: insets.top + 8 }]}
+            hitSlop={12}
+            accessibilityLabel="Fermer">
+            <Ionicons name="close" size={26} color="#fff" />
+          </Pressable>
+        </View>
       </Modal>
 
       {/* Visionneuse PDF (iOS) */}
@@ -546,8 +606,17 @@ const styles = StyleSheet.create({
   },
   thumbImg: { width: '100%', height: '100%' },
   star: { padding: 2 },
-  viewerBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.92)', alignItems: 'center', justifyContent: 'center' },
-  viewerImg: { width: '100%', height: '100%' },
+  galleryRoot: { flex: 1, backgroundColor: '#000' },
+  galleryClose: {
+    position: 'absolute',
+    right: 16,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
   pdfRoot: { flex: 1, backgroundColor: Palette.background },
   pdfHeader: {
     flexDirection: 'row',
