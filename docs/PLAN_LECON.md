@@ -68,7 +68,11 @@ Améliorations retenues :
     proprement en Expo Go (nécessiterait pdf.js dans une WebView cachée ou un build
     de dev) — décision à prendre avec l'utilisateur ; PDF = tuile rouge + ouverture.
 - **Phase D — Organisation**
-  - **S7** : recherche, filtres, tri, renommer, favori, supprimer, réorganiser.
+  - **S7** ✅ : organisation. **Recherche** par nom, **filtres** (Tout / Images /
+    Documents / Favoris), **tri** (Récent / Nom), **renommer** (modale), favori et
+    suppression déjà en place. Message « Aucun résultat » si filtre/recherche vide.
+    Auto-test web : barre + filtres rendus, recherche « fiche » → 1 résultat (captures),
+    0 erreur. `tsc` = 0, export web OK. (Réorganisation manuelle = optionnel plus tard.)
   - **S8** : finitions UX + nettoyage final des dépendances.
 - **Phase E — Qualité**
   - **S9** : QA + test appareil.

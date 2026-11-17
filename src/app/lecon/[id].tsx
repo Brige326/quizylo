@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   Alert,
   Image,
+  KeyboardAvoidingView,
   Linking,
   Modal,
   Platform,
@@ -31,6 +32,7 @@ import {
   listLessonAttachments,
   removeLessonAttachment,
   renameLesson,
+  renameLessonAttachment,
   saveLessonNote,
   setAttachmentFavorite,
   signedUrlFor,
@@ -128,9 +130,31 @@ export default function LeconScreen() {
   const [gallery, setGallery] = useState<{ index: number } | null>(null);
   const [pdfViewer, setPdfViewer] = useState<{ url: string; name: string } | null>(null);
   const [view, setView] = useState<'list' | 'grid'>('list');
+  const [query, setQuery] = useState('');
+  const [filter, setFilter] = useState<'all' | 'images' | 'docs' | 'fav'>('all');
+  const [sort, setSort] = useState<'recent' | 'name'>('recent');
+  const [renaming, setRenaming] = useState<LessonAttachment | null>(null);
+  const [renameText, setRenameText] = useState('');
 
   const imageItems = items.filter((i) => i.kind === 'image');
   const tileW = (screenW - Spacing.lg * 2 - Spacing.md) / 2;
+
+  // Filtre + recherche + tri pour retrouver facilement.
+  const q = query.trim().toLowerCase();
+  const visibleItems = items
+    .filter(
+      (i) =>
+        filter === 'all' ||
+        (filter === 'images' && i.kind === 'image') ||
+        (filter === 'docs' && i.kind !== 'image') ||
+        (filter === 'fav' && i.favorite),
+    )
+    .filter((i) => !q || (i.name ?? '').toLowerCase().includes(q))
+    .sort((a, b) =>
+      sort === 'name'
+        ? (a.name ?? '').localeCompare(b.name ?? '')
+        : (b.created_at ?? '').localeCompare(a.created_at ?? ''),
+    );
 
   const noteRef = useRef('');
   const titleRef = useRef(title);
@@ -362,9 +386,28 @@ export default function LeconScreen() {
     ]);
   };
 
+  const openRename = (it: LessonAttachment) => {
+    setRenameText(it.name ?? '');
+    setRenaming(it);
+  };
+
+  const submitRename = async () => {
+    const it = renaming;
+    const name = renameText.trim();
+    setRenaming(null);
+    if (!it || !name || name === it.name) return;
+    setItems((prev) => prev.map((x) => (x.id === it.id ? { ...x, name } : x)));
+    try {
+      await renameLessonAttachment(it.id, name);
+    } catch {
+      reload();
+    }
+  };
+
   const itemMenu = (it: LessonAttachment) => {
     Alert.alert(it.name ?? 'Ressource', undefined, [
       { text: 'Ouvrir', onPress: () => open(it) },
+      { text: 'Renommer', onPress: () => openRename(it) },
       { text: it.favorite ? 'Retirer des favoris' : 'Mettre en favori', onPress: () => toggleFav(it) },
       { text: 'Supprimer', style: 'destructive', onPress: () => confirmRemove(it) },
       { text: 'Annuler', style: 'cancel' },
@@ -486,9 +529,76 @@ export default function LeconScreen() {
                 </Text>
               </Pressable>
             </EmptyState>
-          ) : view === 'grid' ? (
-            <View style={styles.gridWrap}>
-              {items.map((it) => {
+          ) : (
+            <>
+              <View style={styles.toolbar}>
+                <View style={styles.searchBox}>
+                  <Ionicons name="search" size={16} color={Palette.textMuted} />
+                  <TextInput
+                    style={styles.searchInput}
+                    value={query}
+                    onChangeText={setQuery}
+                    placeholder="Rechercher…"
+                    placeholderTextColor={Palette.textMuted}
+                    returnKeyType="search"
+                  />
+                  {query ? (
+                    <Pressable onPress={() => setQuery('')} hitSlop={8}>
+                      <Ionicons name="close-circle" size={16} color={Palette.textMuted} />
+                    </Pressable>
+                  ) : null}
+                </View>
+                <Pressable
+                  onPress={() => setSort((s) => (s === 'recent' ? 'name' : 'recent'))}
+                  style={styles.sortBtn}
+                  accessibilityLabel="Changer le tri">
+                  <Ionicons
+                    name={sort === 'name' ? 'text' : 'time-outline'}
+                    size={16}
+                    color={Palette.text}
+                  />
+                  <Text variant="small" color={Palette.text}>
+                    {sort === 'name' ? 'Nom' : 'Récent'}
+                  </Text>
+                </Pressable>
+              </View>
+
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+                contentContainerStyle={styles.chipsRow}>
+                {(
+                  [
+                    ['all', 'Tout'],
+                    ['images', 'Images'],
+                    ['docs', 'Documents'],
+                    ['fav', 'Favoris'],
+                  ] as const
+                ).map(([k, label]) => (
+                  <Pressable
+                    key={k}
+                    onPress={() => setFilter(k)}
+                    style={[styles.chip, filter === k && styles.chipActive]}>
+                    <Text
+                      variant="small"
+                      color={filter === k ? Palette.onPrimary : Palette.textSecondary}>
+                      {label}
+                    </Text>
+                  </Pressable>
+                ))}
+              </ScrollView>
+
+              {visibleItems.length === 0 ? (
+                <Text
+                  variant="body"
+                  color={Palette.textMuted}
+                  style={{ textAlign: 'center', marginTop: Spacing.xl }}>
+                  Aucun résultat.
+                </Text>
+              ) : view === 'grid' ? (
+                <View style={styles.gridWrap}>
+                  {visibleItems.map((it) => {
                 const thumb = it.kind === 'image' ? urls[it.storage_path] : undefined;
                 const meta = docMeta(it);
                 return (
@@ -516,11 +626,11 @@ export default function LeconScreen() {
                 );
               })}
             </View>
-          ) : (
-            items.map((it) => {
-              const thumb = it.kind === 'image' ? urls[it.storage_path] : undefined;
-              const meta = docMeta(it);
-              const size = formatSize(it.size_bytes);
+              ) : (
+                visibleItems.map((it) => {
+                  const thumb = it.kind === 'image' ? urls[it.storage_path] : undefined;
+                  const meta = docMeta(it);
+                  const size = formatSize(it.size_bytes);
               return (
                 <Pressable
                   key={it.id}
@@ -554,7 +664,9 @@ export default function LeconScreen() {
                   </Pressable>
                 </Pressable>
               );
-            })
+                })
+              )}
+            </>
           )}
           <View style={{ height: 32 }} />
         </ScrollView>
@@ -618,6 +730,45 @@ export default function LeconScreen() {
             <WV source={{ uri: pdfViewer.url }} style={{ flex: 1, backgroundColor: Palette.background }} />
           ) : null}
         </View>
+      </Modal>
+
+      {/* Renommer une ressource (iOS + Android) */}
+      <Modal
+        visible={!!renaming}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setRenaming(null)}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={styles.renameOverlay}>
+          <Pressable style={styles.renameBackdrop} onPress={() => setRenaming(null)} />
+          <View style={styles.renameCard}>
+            <Text variant="heading" style={{ marginBottom: Spacing.md }}>
+              Renommer
+            </Text>
+            <TextInput
+              style={styles.renameInput}
+              value={renameText}
+              onChangeText={setRenameText}
+              placeholder="Nom du fichier"
+              placeholderTextColor={Palette.textMuted}
+              autoFocus
+              selectTextOnFocus
+            />
+            <View style={styles.renameActions}>
+              <Pressable onPress={() => setRenaming(null)} style={styles.renameBtn}>
+                <Text variant="bodyStrong" color={Palette.textSecondary}>
+                  Annuler
+                </Text>
+              </Pressable>
+              <Pressable onPress={submitRename} style={[styles.renameBtn, styles.renameBtnPrimary]}>
+                <Text variant="bodyStrong" color={Palette.onPrimary}>
+                  Renommer
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
       </Modal>
     </Screen>
   );
@@ -689,6 +840,63 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   tileName: { paddingHorizontal: 2 },
+  toolbar: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, marginBottom: Spacing.sm },
+  searchBox: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: Palette.surface,
+    borderRadius: Radius.md,
+    paddingHorizontal: Spacing.md,
+    height: 40,
+  },
+  searchInput: { flex: 1, color: Palette.text, fontSize: 15, paddingVertical: 0 },
+  sortBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: Palette.surface,
+    borderRadius: Radius.md,
+    paddingHorizontal: Spacing.md,
+    height: 40,
+  },
+  chipsRow: { gap: Spacing.sm, paddingVertical: 2, marginBottom: Spacing.md },
+  chip: {
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 7,
+    borderRadius: Radius.pill,
+    backgroundColor: Palette.surface,
+  },
+  chipActive: { backgroundColor: Palette.primary },
+  renameOverlay: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  renameBackdrop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+  },
+  renameCard: {
+    width: '86%',
+    backgroundColor: Palette.surfaceElevated,
+    borderRadius: Radius.lg,
+    padding: Spacing.lg,
+  },
+  renameInput: {
+    borderRadius: Radius.md,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: Palette.border,
+    backgroundColor: Palette.background,
+    color: Palette.text,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    fontSize: 16,
+  },
+  renameActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: Spacing.sm, marginTop: Spacing.md },
+  renameBtn: { paddingHorizontal: Spacing.lg, paddingVertical: Spacing.sm, borderRadius: Radius.md },
+  renameBtnPrimary: { backgroundColor: Palette.primary },
   addBtn: {
     flexDirection: 'row',
     alignItems: 'center',
