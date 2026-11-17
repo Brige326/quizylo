@@ -46,6 +46,16 @@ const ACTIONS: Chip[] = [
   { key: 'image', label: 'Créer une image', icon: 'image', color: '#A855F7' },
 ];
 
+// Matières rapides sous le hero (comme sur la maquette) ; la liste complète
+// s'ouvre via « Voir tous les sujets ».
+const QUICK_SUBJECTS: Chip[] = [
+  { key: 'informatique', label: 'Informatique', icon: 'laptop', color: '#5B8CFF' },
+  { key: 'mathematiques', label: 'Mathématiques', icon: 'calculator', color: Palette.primary },
+  { key: 'medecine', label: 'Médecine', icon: 'medkit', color: '#FF4D8D' },
+  { key: 'physique', label: 'Physique', icon: 'planet', color: '#F5B301' },
+  { key: 'biologie', label: 'Biologie', icon: 'leaf', color: '#2DD4BF' },
+];
+
 export default function AccueilScreen() {
   const { profile, session, exitGuest } = useAuth();
   const { t } = useI18n();
@@ -292,6 +302,30 @@ export default function AccueilScreen() {
                 {t('home.hero')}
               </Text>
             </Animated.View>
+
+            <Animated.View
+              style={[styles.subjectZone, { opacity: heroOpacity }]}
+              pointerEvents={focused ? 'none' : 'auto'}>
+              <View style={styles.subjectChips}>
+                {QUICK_SUBJECTS.map((s) => (
+                  <Tappable
+                    key={s.key}
+                    style={styles.subjectChip}
+                    onPress={() => comingSoon(s.label)}>
+                    <Ionicons name={s.icon} size={15} color={s.color} />
+                    <Text variant="small">{s.label}</Text>
+                  </Tappable>
+                ))}
+              </View>
+              <Tappable
+                style={styles.seeAll}
+                onPress={() => comingSoon('Voir tous les sujets')}>
+                <Text variant="small" color={Palette.primary}>
+                  Voir tous les sujets
+                </Text>
+                <Ionicons name="arrow-forward" size={14} color={Palette.primary} />
+              </Tappable>
+            </Animated.View>
           </Pressable>
         )}
 
@@ -426,6 +460,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.xl,
   },
   heroTitle: { fontSize: 22, lineHeight: 28 },
+  subjectZone: { alignItems: 'center', gap: Spacing.md },
+  subjectChips: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: Spacing.sm,
+  },
   subjects: {
     flexDirection: 'row',
     flexWrap: 'wrap',
