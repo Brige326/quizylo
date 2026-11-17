@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { useCallback, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, View } from 'react-native';
+import { useCallback, useMemo, useState } from 'react';
+import { ActivityIndicator, Alert, FlatList, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
 
 import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -10,7 +10,13 @@ import { Text } from '@/components/ui/Text';
 import { TopBar } from '@/components/TopBar';
 import { Palette, Radius, Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth';
-import { listUserGeneratedContent, type GenItem } from '@/lib/courses';
+import {
+  deleteGeneratedContent,
+  listSubjects,
+  listUserGeneratedContent,
+  type GenItem,
+  type Subject,
+} from '@/lib/courses';
 
 const KIND_META: Record<string, { label: string; icon: keyof typeof Ionicons.glyphMap; color: string }> = {
   quiz: { label: 'Quiz', icon: 'help-circle', color: '#5B8CFF' },
@@ -36,7 +42,10 @@ export default function ParcoursScreen() {
   const userId = session?.user?.id;
 
   const [items, setItems] = useState<GenItem[]>([]);
+  const [subjects, setSubjects] = useState<Subject[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [filter, setFilter] = useState<string>('all');
 
   const load = useCallback(async () => {
     if (!userId) {
@@ -44,7 +53,9 @@ export default function ParcoursScreen() {
       return;
     }
     try {
-      setItems(await listUserGeneratedContent(userId));
+      const [gen, subs] = await Promise.all([listUserGeneratedContent(userId), listSubjects(userId)]);
+      setItems(gen);
+      setSubjects(subs);
     } catch {
       // rien d'inventé
     } finally {
@@ -58,6 +69,22 @@ export default function ParcoursScreen() {
     }, [load]),
   );
 
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await load();
+    setRefreshing(false);
+  }, [load]);
+
+  // Matières ayant au moins un parcours → chips de filtre.
+  const filterSubjects = useMemo(
+    () => subjects.filter((s) => items.some((it) => it.subject_id === s.id)),
+    [subjects, items],
+  );
+  const visibleItems = useMemo(
+    () => (filter === 'all' ? items : items.filter((it) => it.subject_id === filter)),
+    [items, filter],
+  );
+
   const meta = (kind: string) => KIND_META[kind] ?? { label: kind, icon: 'sparkles' as const, color: Palette.primary };
 
   const subtitle = (it: GenItem) => {
@@ -66,6 +93,25 @@ export default function ParcoursScreen() {
     if (it.level && LEVEL_LABEL[it.level]) parts.push(LEVEL_LABEL[it.level]);
     parts.push(fmtDate(it.created_at));
     return parts.filter(Boolean).join(' · ');
+  };
+
+  const confirmDelete = (it: GenItem) => {
+    Alert.alert(it.title, 'Que veux-tu faire ?', [
+      { text: 'Ouvrir', onPress: () => router.push(`/revision/${it.id}`) },
+      {
+        text: 'Supprimer',
+        style: 'destructive',
+        onPress: async () => {
+          setItems((cur) => cur.filter((x) => x.id !== it.id));
+          try {
+            await deleteGeneratedContent(it.id);
+          } catch {
+            load(); // en cas d'échec, on recharge l'état réel
+          }
+        },
+      },
+      { text: 'Annuler', style: 'cancel' },
+    ]);
   };
 
   return (
@@ -86,22 +132,47 @@ export default function ParcoursScreen() {
         </EmptyState>
       ) : (
         <FlatList
-          data={items}
+          data={visibleItems}
           keyExtractor={(it) => it.id}
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Palette.primary} />}
           ListHeaderComponent={
-            <View style={styles.headerRow}>
-              <Text variant="heading">Tes parcours</Text>
-              <Pressable
-                onPress={() => router.push('/parcours/nouveau')}
-                style={({ pressed }) => [styles.newBtn, pressed && styles.pressed]}
-                accessibilityLabel="Créer un parcours">
-                <Ionicons name="add" size={18} color={Palette.onPrimary} />
-                <Text variant="bodyStrong" color={Palette.onPrimary}>
-                  Créer
-                </Text>
-              </Pressable>
+            <View>
+              <View style={styles.headerRow}>
+                <Text variant="heading">Tes parcours</Text>
+                <Pressable
+                  onPress={() => router.push('/parcours/nouveau')}
+                  style={({ pressed }) => [styles.newBtn, pressed && styles.pressed]}
+                  accessibilityLabel="Créer un parcours">
+                  <Ionicons name="add" size={18} color={Palette.onPrimary} />
+                  <Text variant="bodyStrong" color={Palette.onPrimary}>
+                    Créer
+                  </Text>
+                </Pressable>
+              </View>
+              {filterSubjects.length > 0 ? (
+                <FlatList
+                  data={[{ id: 'all', name: 'Tout' } as Pick<Subject, 'id' | 'name'>, ...filterSubjects]}
+                  horizontal
+                  keyExtractor={(s) => s.id}
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.chips}
+                  renderItem={({ item: s }) => {
+                    const on = filter === s.id;
+                    return (
+                      <Pressable
+                        onPress={() => setFilter(s.id)}
+                        style={[styles.chip, on && styles.chipOn]}
+                        accessibilityLabel={s.name}>
+                        <Text variant="caption" color={on ? Palette.onPrimary : Palette.textSecondary}>
+                          {s.name}
+                        </Text>
+                      </Pressable>
+                    );
+                  }}
+                />
+              ) : null}
             </View>
           }
           renderItem={({ item }) => {
@@ -109,6 +180,8 @@ export default function ParcoursScreen() {
             return (
               <Pressable
                 onPress={() => router.push(`/revision/${item.id}`)}
+                onLongPress={() => confirmDelete(item)}
+                delayLongPress={300}
                 style={({ pressed }) => [styles.row, pressed && styles.pressed]}
                 accessibilityLabel={item.title}>
                 <View style={[styles.rowIcon, { backgroundColor: m.color + '22' }]}>
@@ -150,6 +223,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
   },
+  chips: { gap: Spacing.sm, paddingBottom: Spacing.md, paddingRight: Spacing.lg },
+  chip: {
+    backgroundColor: Palette.surface,
+    borderRadius: Radius.pill,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+  },
+  chipOn: { backgroundColor: Palette.primary },
   row: {
     flexDirection: 'row',
     alignItems: 'center',

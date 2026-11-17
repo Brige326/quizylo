@@ -21,7 +21,7 @@ fiche, résumé) et la base `generated_content`.
 - **P2** ✅ — Assistant écrans 1 & 2 : matière, puis ajout/import des documents (+ récap).
 - **P3** ✅ — Assistant écrans 3 & 4 : format + difficulté + niveau, Générer (réel).
 - **P4** ✅ — Historique des parcours (onglet Parcours) + formats flashcards & examen exposés.
-- **P5** — Finitions pro : historique par matière, regénérer, score conservé, états vides, QA multi-niveaux.
+- **P5** ✅ — Finitions : filtres par matière, suppression (appui long), pull-to-refresh.
 
 ## Journal
 
@@ -86,3 +86,16 @@ fiche, résumé) et la base `generated_content`.
 - Auto-test web : onglet historique peuplé capturé (3 parcours, badges, date) → conforme, 0 erreur.
   `tsc` = 0. Patchs de capture (auth web + données démo) retirés, aucun résidu.
 - Reste pour P5 : suppression depuis la liste, regénérer en un geste, filtres par matière, QA device.
+
+### P5 ✅ — Finitions historique
+- **Filtres par matière** : chips « Tout » + une puce par matière ayant au moins un parcours ;
+  la liste se filtre instantanément.
+- **Suppression depuis la liste** : appui long sur un parcours → « Ouvrir / Supprimer / Annuler »
+  (suppression optimiste, rollback par rechargement si échec).
+- **Pull-to-refresh** sur la liste.
+- Auto-test web (patch capture temporaire) : liste + chips + filtrage Mathématiques → conforme,
+  0 erreur. `tsc` = 0. Patchs retirés, aucun résidu.
+- **Non couvert (améliorations futures)** : « regénérer en un geste » nécessiterait de stocker les
+  documents source du parcours (non conservés aujourd'hui) — à prévoir si besoin.
+
+L'espace Parcours est fonctionnellement complet (P1→P5). Reste la QA réelle sur appareil.
